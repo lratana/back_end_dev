@@ -14,7 +14,7 @@ services:
     stdin_open: true # Keep the container running
     environment:
       VITE_HMR_PORT: 5173 # HMR port for Vite
-
+      VITE_API_URL: http://localhost:8000/api
   vue-production:
     build:
       context: . # Build context

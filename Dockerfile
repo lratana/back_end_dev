@@ -15,6 +15,7 @@ RUN apt-get update -y && apt-get install -y \
     libjpeg62-turbo-dev \
     libzip-dev \
     mariadb-client
+
 # Install PHP extensions
 RUN docker-php-ext-install gettext intl pdo_mysql gd pcntl zip
 
@@ -36,3 +37,10 @@ COPY . /var/www/html
 
 # Set working directory
 WORKDIR /var/www/html
+
+# Set permissions for Laravel (PRODUCTION ADDITION)
+RUN chown -R www-data:www-data /var/www/html/storage 
+RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
+RUN chown -R www-data:www-data /var/www/html/public
+RUN chmod +x /var/www/html/*.sh && \
+    chown www-data:www-data /var/www/html/*.sh
