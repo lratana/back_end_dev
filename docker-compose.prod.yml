@@ -37,7 +37,7 @@ services:
       DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
   mysql:
     image: mariadb:10.11.13
-    container_name: mysql-example.cloud-container
+    container_name: mysql-starlink98.cloud-container
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE}
