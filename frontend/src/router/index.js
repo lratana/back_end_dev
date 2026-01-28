@@ -13,12 +13,24 @@ import Sidebar from '@com/includes/SideBar.vue'
 import Footer from '@com/includes/Footer.vue'
 import UserProfile from '@com/auth/UserProfile.vue'
 import Backup from '@pg/Backup.vue'
-
+import { useStore } from 'vuex';
 
 const includes = {
   navbar: Navbar,
   sidebar: Sidebar,
   footer: Footer,
+
+}
+
+function authorize(roles) {
+  return (to, from, next) => {
+    const store = useStore();
+    const user = store.state.user;
+    if (user && roles.includes(user.level)) {
+      return next();
+    }
+    return next({ name: 'dashboard' });
+  }
 }
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -99,6 +111,7 @@ const router = createRouter({
         ...includes,
       },
       meta: { guard: true },
+      beforeEnter: authorize(['admin']),
     },
   ],
 })

@@ -30,10 +30,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
     // Backup routes
-    Route::prefix('backups')->group(function () {
-        Route::get('/', [BackupController::class, 'getBackups']);
-        Route::post('/create', [BackupController::class, 'createBackup']);
-        Route::get('/download/{filename}', [BackupController::class, 'downloadBackup']);
-        Route::delete('/delete/{filename}', [BackupController::class, 'deleteBackup']);
+    // Admin-only routes
+    Route::middleware('admin')->group(function () {
+        Route::prefix('backups')->group(function () {
+            Route::get('/', [BackupController::class, 'getBackups']);
+            Route::post('/create', [BackupController::class, 'createBackup']);
+            Route::get('/download/{filename}', [BackupController::class, 'downloadBackup']);
+            Route::delete('/delete/{filename}', [BackupController::class, 'deleteBackup']);
+        });
     });
 });
