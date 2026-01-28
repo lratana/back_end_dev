@@ -1,9 +1,11 @@
 services:
   app:
+    ## Updated for production deployment
     build: .
     image: starlink98.cloud:latest
     container_name: starlink98.cloud-container
     volumes:
+      ## Updated volume names for clarity
       - ./:/var/www/html
       - node:/var/www/html/node_modules
       - laravel:/var/www/html/vendor
@@ -35,6 +37,7 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+  ## Added MySQL service for production
   mysql:
     image: mariadb:10.11.13
     container_name: mysql-starlink98.cloud-container
@@ -49,6 +52,22 @@ services:
       - mysql:/var/lib/mysql
     ports:
       - 3306:3306
+  ## Added phpMyAdmin for database management
+  phpmyadmin:
+    image: phpmyadmin:5.2.2
+    container_name: phpmyadmin-starlink98.cloud-container
+    depends_on:
+      - mysql
+    environment:
+      UPLOAD_LIMIT: 50M
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      ## Using environment variables for credentials
+      ## Mapped to the MySQL service
+      PMA_ABSOLUTE_URI: "/phpmyadmin/"
+    ports:
+      - 9000:80
+## Updated volume names for clarity
 volumes:
   mysql:
     name: starlink98.cloud-mysql
