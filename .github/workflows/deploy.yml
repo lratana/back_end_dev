@@ -3,9 +3,7 @@ env:
   NGINX_CONFIG: starlink98.cloud
 on:
   push:
-    branches: [main]
-  # pull_request:
-  #   branches: [main]
+    branches: [branch]
 
 jobs:
   deploy:
@@ -13,7 +11,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
       - name: Copy files to VPS via SSH
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -23,7 +20,6 @@ jobs:
           port: 22
           source: "."
           target: "~/starlink98.cloud"
-          
       - name: Deploy Backend and Frontend on VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -32,9 +28,23 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
           script: |
+            # Deploy Backend
             cd ~/starlink98.cloud
             docker compose -f docker-compose.prod.yml down || true
             docker compose -f docker-compose.prod.yml up -d --build
+
+            # Deploy Frontend
             cd ~/starlink98.cloud/frontend
             docker compose -f docker-compose.prod.yml down || true
             docker compose -f docker-compose.prod.yml up -d --build
+
+            # Install nginx if not installed
+            sudo apt update && sudo apt install -y nginx
+
+            # Overwrite nginx config file
+            sudo cp ~/starlink98.cloud/${{ env.NGINX_CONFIG }} /etc/nginx/sites-available/${{ env.NGINX_CONFIG }}
+            sudo ln -sf /etc/nginx/sites-available/${{ env.NGINX_CONFIG }} /etc/nginx/sites-enabled/
+            sudo rm -f /etc/nginx/sites-enabled/default
+
+            # Test and reload nginx
+            sudo nginx -t && sudo systemctl enable nginx && sudo systemctl start nginx && sudo systemctl reload nginx
