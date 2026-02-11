@@ -273,6 +273,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    Echo.leave(`MessageEvent.${chatId.value}`);
     if (messagesContainer.value) {
         $(messagesContainer.value).off("scroll");
     }
@@ -281,7 +282,10 @@ onBeforeUnmount(() => {
 // Watch for route param changes (switching between chats)
 watch(
     () => route.params.chatId,
-    async (newChatId) => {
+    async (newChatId, oldChatId) => {
+        if (oldChatId) {
+            Echo.leave(`MessageEvent.${oldChatId}`);
+        }
         if (newChatId) {
             resetData();
             await readChat();
@@ -308,6 +312,29 @@ async function readChat() {
         scrollToBottom();
 
         await apiMarkAllMessagesAsSeen(chatId.value);
+
+        Echo.private(`MessageEvent.${chatId.value}`)
+            .listen(".MessageCreated", async (e) => {
+                const newMsg = e.message;
+                if (newMsg.type !== "text") {
+                    newMsg.content = await loadFile(newMsg.content);
+                }
+                messages.value.push(newMsg);
+                await nextTick();
+                scrollToBottom();
+            })
+            .listen(".MessageUpdated", async (e) => {
+                const updatedMsg = e.message;
+                if (updatedMsg.type !== "text") {
+                    updatedMsg.content = await loadFile(updatedMsg.content);
+                }
+                messages.value = messages.value.map((m) =>
+                    m.id === updatedMsg.id ? updatedMsg : m
+                );
+            })
+            .listen(".MessageDeleted", (e) => {
+                messages.value = messages.value.filter((m) => m.id !== e.messageId);
+            });
     } catch (error) {
         return MessageModal(
             "error",
