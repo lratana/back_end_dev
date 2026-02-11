@@ -1,11 +1,15 @@
-import 'admin-lte/plugins/bootstrap/js/bootstrap.bundle.min.js';
 import 'admin-lte/dist/js/adminlte.min.js';
+import 'admin-lte/plugins/bootstrap/js/bootstrap.bundle.min.js';
 
 import Swal from 'sweetalert2';
 window.Swal = Swal;
 
 import axios from 'axios';
 window.axios = axios;
+
+import jquery from 'jquery';
+window.$ = jquery;
+window.jQuery = jquery;
 
 window.API_URL = import.meta.env.VITE_API_URL;
 
@@ -16,7 +20,6 @@ import router from './router';
 import { getVerifyAccount } from '@func/api/auth';
 const app = createApp(App);
 
-// Create Vuex store
 const store = createStore({
     state: {
         user: null,
@@ -24,6 +27,11 @@ const store = createStore({
     mutations: {
         setUser(state, user) {
             state.user = user;
+        },
+        setUserPhoto(state, photo) {
+            if (state.user) {
+                state.user.photo = photo;
+            }
         },
     },
     actions: {
@@ -45,9 +53,11 @@ const store = createStore({
     }
 });
 
+
 app.use(router);
 app.use(store);
 app.mount('#app');
+
 
 router.beforeEach(async (to, from, next) => {
     await store.dispatch('verifyAccount');

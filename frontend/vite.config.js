@@ -14,18 +14,16 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@com': fileURLToPath(new URL('./src/components', import.meta.url)),
-      '@pg': fileURLToPath(new URL('./src/pages', import.meta.url)),
-      '@func': fileURLToPath(new URL('./src/components/functions', import.meta.url)),
+      '@func': fileURLToPath(new URL('./src/functions', import.meta.url)),
       '@assets': fileURLToPath(new URL('./src/assets', import.meta.url)),
     },
   },
-
   server: {
     host: '0.0.0.0',
-    port: process.env.VITE_HMR_PORT || 5173,
+    port: process.env.VITE_HMR_PORT,
     hmr: {
       protocol: 'ws',
-      port: process.env.VITE_HMR_PORT || 5173,
+      port: process.env.VITE_HMR_PORT,
     },
     watch: {
       usePolling: true,

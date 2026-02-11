@@ -1,27 +1,23 @@
+import Signin from '@com/auth/Signin.vue';
+import Signout from '@com/auth/Signout.vue';
+import Signup from '@com/auth/Signup.vue';
+import VerifyEmail from '@com/auth/VerifyEmail.vue';
+import ResetPassword from '@com/auth/ResetPassword.vue';
+import SetNewPassword from '@com/auth/SetNewPassword.vue';
+import GoogleCallback from '@com/auth/GoogleCallback.vue';
+import GoogleCallbackError from '@com/auth/GoogleCallbackError.vue';
+import UserProfile from '@com/auth/UserProfile.vue';
+import Dashboard from '@com/pages/Dashboard.vue';
+import Backup from '@com/pages/Backup.vue';
+
 import { createRouter, createWebHistory } from 'vue-router'
-import SignIn from '@com/auth/SignIn.vue'
-import SignUp from '@com/auth/SignUp.vue'
-import SignOut from '@com/auth/SignOut.vue'
-import VerifyEmail from '@com/auth/VerifyEmail.vue'
-import Dashboard from '@pg/Dashboard.vue'
-import SetNewPassword from '@com/auth/SetNewPassword.vue'
-import ResetPassword from '@com/auth/ResetPassword.vue'
-import GoogleCallback from '@com/auth/GoogleCallback.vue'
-import GoogleCallbackError from '@com/auth/GoogleCallbackError.vue'
-import Navbar from '@com/includes/Navbar.vue'
-import Sidebar from '@com/includes/SideBar.vue'
-import Footer from '@com/includes/Footer.vue'
-import UserProfile from '@com/auth/UserProfile.vue'
-import Backup from '@pg/Backup.vue'
+import Navbar from '@com/includes/Navbar.vue';
+import Footer from '@com/includes/Footer.vue';
+import Sidebar from '@com/includes/Sidebar.vue';
+
+import ChatBox from '@com/pages/ChatBox.vue';
+
 import { useStore } from 'vuex';
-
-const includes = {
-  navbar: Navbar,
-  sidebar: Sidebar,
-  footer: Footer,
-
-}
-
 function authorize(roles) {
   return (to, from, next) => {
     const store = useStore();
@@ -32,76 +28,80 @@ function authorize(roles) {
     return next({ name: 'dashboard' });
   }
 }
+
+const includes = {
+  navbar: Navbar,
+  sidebar: Sidebar,
+  footer: Footer,
+}
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-
-
   routes: [
     {
       path: '/',
       name: 'auth.signin',
-      component: SignIn,
-      meta: { guard: false }
-    },
-    {
-      path: '/signup',
-      name: 'auth.signup',
-      component: SignUp,
-      meta: { guard: false }
+      component: Signin,
+      meta: { guard: false },
     },
     {
       path: '/signout',
       name: 'auth.signout',
-      component: SignOut,
-      meta: { guard: true }
+      component: Signout,
+      meta: { guard: true },
     },
-
+    {
+      path: '/signup',
+      name: 'auth.signup',
+      component: Signup,
+      meta: { guard: false },
+    },
     {
       path: '/email/verify/:api_url',
       name: 'auth.verify.email',
       component: VerifyEmail,
+      meta: { guard: false },
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      meta: { guard: true },
-      components:
-      {
-        default: Dashboard,
-        ...includes
-      }
-    },
-    {
-      path: '/profile',
-      name: 'profile',
-      meta: { guard: true },
-      components:
-      {
-        default: UserProfile,
-        ...includes
-      }
-
-    },
-    {
-      path: '/set-new-password',
-      name: 'auth.setnewpassword',
-      component: SetNewPassword,
-    },
-    {
-      path: '/reset-password',
-      name: 'auth.resetpassword',
+      path: '/password/reset',
+      name: 'auth.reset.password',
       component: ResetPassword,
-      meta: { guard: false }
+      meta: { guard: false },
+    },
+    {
+      path: '/password/reset/:api_url',
+      name: 'auth.set.password',
+      component: SetNewPassword,
+      meta: { guard: false },
     },
     {
       path: '/auth/google/callback',
       name: 'auth.google.callback',
       component: GoogleCallback,
+      meta: { guard: false },
     },
     {
       path: '/auth/google/callback/error',
       name: 'auth.google.callback.error',
       component: GoogleCallbackError,
+      meta: { guard: false },
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      components: {
+        default: Dashboard,
+        ...includes,
+      },
+      meta: { guard: true },
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      components: {
+        default: UserProfile,
+        ...includes,
+      },
+      meta: { guard: true },
     },
     {
       path: '/backups',
@@ -111,7 +111,16 @@ const router = createRouter({
         ...includes,
       },
       meta: { guard: true },
-      beforeEnter: authorize(['admin']),
+      beforeEnter: authorize(['admin'])
+    },
+    {
+      path: '/chats/:chatId',
+      name: 'chats',
+      components: {
+        default: ChatBox,
+        ...includes,
+      },
+      meta: { guard: true },
     },
   ],
 })

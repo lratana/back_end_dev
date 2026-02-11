@@ -10,14 +10,18 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailInterface;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
-class User extends Authenticatable implements MustVerifyEmailInterface
+class User extends Authenticatable implements MustVerifyEmailContract
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
     use HasApiTokens, MustVerifyEmail;
 
+    protected $appends = [
+        'password_null',
+    ];
     /**
      * The attributes that are mass assignable.
      *
@@ -28,7 +32,7 @@ class User extends Authenticatable implements MustVerifyEmailInterface
         'email',
         'password',
         'email_verified_at',
-        'photo',
+        'photo'
     ];
 
     /**
@@ -53,15 +57,7 @@ class User extends Authenticatable implements MustVerifyEmailInterface
             'password' => 'hashed',
         ];
     }
-    /**
-     */
-    // Send the email verification notification using custom notification.
 
-    public function sendEmailVerificationNotification()
-    {
-        $this->notify(new VerifyEmail());
-    }
-    // Accessor for photo attribute
     protected function Photo(): Attribute
     {
         return Attribute::make(
@@ -71,16 +67,81 @@ class User extends Authenticatable implements MustVerifyEmailInterface
         );
     }
 
-    /**
-     * Send the password reset notification using custom notification.
-     */
+    function getPasswordNullAttribute(): bool
+    {
+        return empty($this->password);
+    }
+
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new VerifyEmail());
+    }
+
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new ResetPassword($token));
     }
-    // Check if password is null
-    function getPasswordNullAttribute()
+
+    public function members()
     {
-        return empty($this->password);
+        return $this->hasMany(ChatMember::class);
+    }
+
+    public function chats()
+    {
+        return $this->belongsToMany(Chat::class, 'chat_members')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
+
+    public function hasChatAsAdmin($chatId): Chat
+    {
+        $chat = $this->chats()
+            ->where('chat_id', $chatId)
+            ->wherePivot('role', 'admin')
+            ->first();
+        if (!$chat) {
+            throw new ModelNotFoundException('Chat not found or user is not an admin.');
+        }
+        return $chat;
+    }
+
+    public function hasChat($chatId): Chat
+    {
+        $chat = $this->chats()
+            ->where('chat_id', $chatId)
+            ->first();
+        if (!$chat) {
+            throw new ModelNotFoundException('Chat not found.');
+        }
+        return $chat;
+    }
+
+    public function isChatMember($chatId): ChatMember
+    {
+        $member = $this->members()
+            ->where('chat_id', $chatId)
+            ->first();
+        if (!$member) {
+            throw new ModelNotFoundException('You are not a member of this chat.');
+        }
+        return $member;
+    }
+
+    public function hasMessageInChat($messageId, $chatId): ChatMessage
+    {
+        $message = $this->messages()
+            ->where('id', $messageId)
+            ->where('chat_id', $chatId)
+            ->first();
+        if (!$message) {
+            throw new ModelNotFoundException('Chat message not found.');
+        }
+        return $message;
     }
 }

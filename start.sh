@@ -1,3 +1,14 @@
+
+#!/bin/bash
+set -e
+
+chmod -R g+s /var/www/html/storage
+chown -R www-data:www-data /var/www/html/bootstrap/cache
+chown -R www-data:www-data /var/www/html/storage
+chown -R www-data:www-data /var/www/html/storage/app
+chown -R www-data:www-data /var/www/html/storage/app/public
+chown -R www-data:www-data /var/www/html/storage/app/private
+
 # Run specific migrations
 php artisan migrate --path=database/migrations/0001_01_01_000001_create_cache_table.php --force
 php artisan migrate --path=database/migrations/0001_01_01_000002_create_jobs_table.php --force

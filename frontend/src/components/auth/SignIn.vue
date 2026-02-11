@@ -40,7 +40,7 @@
             </div>
           </form>
           <p class="mb-1">
-            <router-link :to="{ name: 'auth.resetpassword' }" class="text-center">I forgot my
+            <router-link :to="{ name: 'auth.reset.password' }" class="text-center">I forgot my
               password</router-link>
           </p>
           <!-- Add this after the form and before the forgot password link -->

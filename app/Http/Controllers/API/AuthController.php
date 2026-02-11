@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
+use Exception;
+use App\Models\User;
+use Illuminate\Support\Str;
 use App\Traits\UploadMethod;
 use Illuminate\Http\Request;
-use App\Models\User;
-use Exception;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 

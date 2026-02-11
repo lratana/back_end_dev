@@ -30,7 +30,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import { LoadingModal, MessageModal, CloseModal } from "../functions/swal.js";
+import { LoadingModal, MessageModal, CloseModal } from "../../functions/swal.js";
 const route = useRoute();
 
 const status = ref(null);
