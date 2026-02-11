@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use Exception;
 use App\Models\Chat;
 use App\Models\ChatMember;
+use App\Events\ChatCreated;
+use App\Events\ChatDeleted;
+use App\Events\ChatUpdated;
 use App\Traits\UploadMethod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +105,10 @@ class ChatController extends Controller
             throw new Exception($e->getMessage());
         }
         $chat->loadDefault($user);
+        // Notify all members about the new chat
+        foreach ($chat->members()->pluck('user_id')->toArray() as $memberId) {
+            broadcast(new ChatCreated($chat, $memberId))->toOthers();
+        }
         return response([
             'message' => 'Chat created successfully',
             'chat' => new ChatResource($chat)
@@ -155,6 +162,10 @@ class ChatController extends Controller
         }
 
         $chat->loadDefault($user);
+        // Notify all members about the update
+        foreach ($chat->members()->pluck('user_id')->toArray() as $memberId) {
+            broadcast(new ChatUpdated($chat, $memberId))->toOthers();
+        }
         return response([
             'message' => 'Chat updated successfully',
             'chat' => new ChatResource($chat)
@@ -170,7 +181,8 @@ class ChatController extends Controller
 
             // Delete all messages
             $chat->messages()->delete();
-
+            // Collect member IDs before deleting
+            $memberIds = $chat->members()->pluck('user_id')->toArray();
             // Delete all members
             $chat->members()->delete();
 
@@ -178,6 +190,10 @@ class ChatController extends Controller
             $chat->delete();
 
             DB::commit();
+            // Notify all members about the deletion
+            foreach ($memberIds as $memberId) {
+                broadcast(new ChatDeleted($chatId, $memberId))->toOthers();
+            }
         } catch (Exception $e) {
             DB::rollBack();
             throw new Exception($e->getMessage());

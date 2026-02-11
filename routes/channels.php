@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Facades\Broadcast;
 
-Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+// Message channel - authorized if user is a member of the chat
+Broadcast::channel('MessageEvent.{chatId}', function ($user, $chatId) {
+    try {
+        return (bool) $user->isChatMember($chatId);
+    } catch (\Exception $e) {
+        return false;
+    }
+});
+
+// Chat channel - authorized if user is the channel owner
+Broadcast::channel('ChatEvent.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
 });

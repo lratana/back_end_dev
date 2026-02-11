@@ -16,6 +16,9 @@ php artisan migrate --path=database/migrations/0001_01_01_000002_create_jobs_tab
 # Start Apache in the foreground (main process)
 apache2-foreground &
 
+## Start Reverb in the background
+php artisan reverb:start &
+
 # Start the queue worker in the background
 php artisan queue:work
 # Wait indefinitely to keep the container running
