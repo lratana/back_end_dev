@@ -52,9 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
             });
         });
     });
-
-
-
+    // ... existing routes
     // User API Routes
     Route::prefix('users')->group(function () {
         Route::get('/', [UserController::class, 'getUsers']);

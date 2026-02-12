@@ -23,6 +23,15 @@ RUN docker-php-ext-install gettext intl pdo_mysql gd pcntl zip
 RUN docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd
 
+# Configure PHP upload settings optimized for 4GB VPS
+RUN echo "upload_max_filesize = 50M" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "post_max_size = 55M" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "max_execution_time = 120" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "max_input_time = 120" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "max_file_uploads = 20" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "file_uploads = On" >> /usr/local/etc/php/conf.d/uploads.ini
+
 # Set Apache document root to /var/www/html/public
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
@@ -38,9 +47,10 @@ COPY . /var/www/html
 # Set working directory
 WORKDIR /var/www/html
 
-# Set permissions for Laravel (PRODUCTION ADDITION)
-RUN chown -R www-data:www-data /var/www/html/storage 
 RUN chown -R www-data:www-data /var/www/html/bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html/public
+RUN chown -R www-data:www-data /var/www/html/storage
+RUN chown -R www-data:www-data /var/www/html/storage/app
+RUN chown -R www-data:www-data /var/www/html/storage/app/public
+RUN chown -R www-data:www-data /var/www/html/storage/app/private
 RUN chmod +x /var/www/html/*.sh && \
     chown www-data:www-data /var/www/html/*.sh
