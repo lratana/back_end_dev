@@ -63,6 +63,8 @@ class UserSeeder extends Seeder
             ],
         ];
 
+        // ... existing manual user creation above ...
+
         foreach ($users as $userData) {
             User::firstOrCreate(
                 ['email' => $userData['email']],
@@ -70,6 +72,12 @@ class UserSeeder extends Seeder
             );
         }
 
-        $this->command->info('Users seeded successfully!');
+        // Generate 1000 additional users using factory
+        User::factory()->count(1000)->create([
+            'level' => 'user',
+            'email_verified_at' => now(),
+        ]);
+
+        $this->command->info('Users seeded successfully with 1000+ additional users!');
     }
 }

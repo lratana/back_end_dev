@@ -1,11 +1,15 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\API;
 
 use Exception;
 use App\Models\Chat;
+use App\Events\ChatUpdated;
 use App\Models\ChatMessage;
 use Illuminate\Http\Request;
+use App\Events\MessageCreated;
+use App\Events\MessageDeleted;
+use App\Events\MessageUpdated;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
@@ -76,6 +80,12 @@ class ChatMessageController extends Controller
             DB::rollBack();
             throw new Exception($e->getMessage());
         }
+
+        broadcast(new MessageCreated($message))->toOthers();
+        $userIds = Chat::find($chatId)->members()->pluck('user_id')->toArray();
+        foreach ($userIds as $userId) {
+            broadcast(new ChatUpdated($message->chat()->first(), $userId));
+        }
         return response([
             'message' => 'Message sent successfully',
             'chat_message' => new ChatMessageResource($message->load('user'))
@@ -100,8 +110,13 @@ class ChatMessageController extends Controller
             DB::rollBack();
             throw new Exception($e->getMessage());
         }
-        return response([
 
+        broadcast(new MessageUpdated($message))->toOthers();
+        $userIds = Chat::find($chatId)->members()->pluck('user_id')->toArray();
+        foreach ($userIds as $userId) {
+            broadcast(new ChatUpdated($message->chat()->first(), $userId));
+        }
+        return response([
             'message' => 'Message updated successfully',
             'chat_message' => new ChatMessageResource($message->load('user'))
         ]);
@@ -126,6 +141,13 @@ class ChatMessageController extends Controller
             DB::rollBack();
             throw new Exception($e->getMessage());
         }
+
+        broadcast(new MessageDeleted($message->id, $chatId))->toOthers();
+        $userIds = Chat::find($chatId)->members()->pluck('user_id')->toArray();
+        foreach ($userIds as $userId) {
+            broadcast(new ChatUpdated($message->chat()->first(), $userId));
+        }
+
         return response([
             'message' => 'Message deleted successfully'
         ]);
@@ -149,6 +171,7 @@ class ChatMessageController extends Controller
         }
         try {
             DB::beginTransaction();
+            $message->timestamps = false; // Disable automatic timestamp update
             $message->update(['seen_at' => now()]);
             DB::commit();
         } catch (Exception $e) {
@@ -165,12 +188,17 @@ class ChatMessageController extends Controller
         $user = $request->user();
 
         $user->isChatMember($chatId);
+
         try {
             DB::beginTransaction();
-            $updatedCount = ChatMessage::where('chat_id', $chatId)
-                ->where('user_id', '<>', $user->id)
-                ->whereNull('seen_at')
-                ->update(['seen_at' => now()]);
+            $messages = ChatMessage::where('chat_id', $chatId)
+                ->where('user_id', '<>', $user->id) // Can't marek own messages as seen
+                ->whereNull('seen_at')->get();
+            $messages->each(function ($message) {
+                $message->timestamps = false;
+                $message->update(['seen_at' => now()]);
+            });
+
             DB::commit();
         } catch (Exception $e) {
             DB::rollBack();

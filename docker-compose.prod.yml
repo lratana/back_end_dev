@@ -1,17 +1,16 @@
 services:
   app:
-    ## Updated for production deployment
     build: .
     image: starlink98.cloud:latest
     container_name: starlink98.cloud-container
     volumes:
-      ## Updated volume names for clarity
       - ./:/var/www/html
       - node:/var/www/html/node_modules
       - laravel:/var/www/html/vendor
     command: sh /var/www/html/production.sh
     ports:
       - 8000:80
+      - 8080:8080
     depends_on:
       - mysql
     environment:
@@ -29,6 +28,16 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URL: "https://starlink98.cloud/api/auth/google/callback"
 
+      # Reverb Configuration
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: ${REVERB_APP_ID}
+      REVERB_APP_KEY: ${REVERB_APP_KEY}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET}
+      REVERB_HOST: "0.0.0.0"
+      REVERB_PORT: 8080
+      REVERB_SCHEME: "http"
+      REVERB_PATH: ""
+
       # Database Configuration
       DB_CONNECTION: mysql
       DB_HOST: mysql
@@ -37,7 +46,6 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-  ## Added MySQL service for production
   mysql:
     image: mariadb:10.11.13
     container_name: mysql-starlink98.cloud-container
@@ -52,7 +60,6 @@ services:
       - mysql:/var/lib/mysql
     ports:
       - 3306:3306
-  ## Added phpMyAdmin for database management
   phpmyadmin:
     image: phpmyadmin:5.2.2
     container_name: phpmyadmin-starlink98.cloud-container
@@ -62,12 +69,9 @@ services:
       UPLOAD_LIMIT: 50M
       PMA_HOST: mysql
       PMA_PORT: 3306
-      ## Using environment variables for credentials
-      ## Mapped to the MySQL service
       PMA_ABSOLUTE_URI: "/phpmyadmin/"
     ports:
       - 9000:80
-## Updated volume names for clarity
 volumes:
   mysql:
     name: starlink98.cloud-mysql

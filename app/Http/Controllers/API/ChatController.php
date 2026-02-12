@@ -190,14 +190,15 @@ class ChatController extends Controller
             $chat->delete();
 
             DB::commit();
-            // Notify all members about the deletion
-            foreach ($memberIds as $memberId) {
-                broadcast(new ChatDeleted($chatId, $memberId))->toOthers();
-            }
         } catch (Exception $e) {
             DB::rollBack();
             throw new Exception($e->getMessage());
         }
+        // Notify all members about the deletion
+        foreach ($memberIds as $memberId) {
+            broadcast(new ChatDeleted($chatId, $memberId))->toOthers();
+        }
+
         return response([
             'message' => 'Chat deleted successfully'
         ]);

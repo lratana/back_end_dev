@@ -42,6 +42,15 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/download/{filename}', [BackupController::class, 'downloadBackup']);
             Route::delete('/delete/{filename}', [BackupController::class, 'deleteBackup']);
         });
+        Route::prefix('manage')->group(function () {
+            Route::prefix('users')->group(function () {
+                Route::get('/', [UserController::class, 'getDetailUsers']);
+                Route::get('/read/{id}', [UserController::class, 'readDetailUser']);
+                Route::post('/create', [UserController::class, 'createUser']);
+                Route::put('/update/{id}', [UserController::class, 'updateUser']);
+                Route::delete('/delete/{id}', [UserController::class, 'deleteUser']);
+            });
+        });
     });
 
 

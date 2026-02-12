@@ -66,12 +66,12 @@ class ChatMemberController extends Controller
                 'role' => 'member',
             ]);
             DB::commit();
-            // Notify the added user about the new chat
-            broadcast(new ChatCreated($chat, $data['user_id']));
         } catch (Exception $e) {
             DB::rollBack();
             throw new Exception($e->getMessage());
         }
+        // Notify the added user about the new chat
+        broadcast(new ChatCreated($chat, $data['user_id']));
         return response([
             'message' => 'Member added successfully',
             'chat_member' => new ChatMemberResource($member->load('user'))
@@ -126,12 +126,12 @@ class ChatMemberController extends Controller
             DB::beginTransaction();
             $member->delete();
             DB::commit();
-            // Notify the removed user
-            broadcast(new ChatDeleted($chatId, $member->user_id));
         } catch (Exception $e) {
             DB::rollBack();
             throw new Exception($e->getMessage());
         }
+        // Notify the removed user
+        broadcast(new ChatDeleted($chatId, $member->user_id));
         return response([
             'message' => 'Member removed successfully'
         ]);

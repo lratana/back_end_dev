@@ -20,7 +20,7 @@ services:
       VITE_REVERB_PORT: "8080"
       VITE_REVERB_SCHEME: "http"
       VITE_REVERB_PATH: ""
-
+  ## This service is for production build, it serves the built files using Apache
   vue-production:
     build:
       context: . # Build context
