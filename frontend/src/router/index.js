@@ -1,6 +1,6 @@
-import Signin from '@com/auth/Signin.vue';
-import Signout from '@com/auth/Signout.vue';
-import Signup from '@com/auth/Signup.vue';
+import Signin from '@com/auth/SignIn.vue';
+import Signout from '@com/auth/SignOut.vue';
+import Signup from '@com/auth/SignUp.vue';
 import VerifyEmail from '@com/auth/VerifyEmail.vue';
 import ResetPassword from '@com/auth/ResetPassword.vue';
 import SetNewPassword from '@com/auth/SetNewPassword.vue';
@@ -13,7 +13,7 @@ import Backup from '@com/pages/Backup.vue';
 import { createRouter, createWebHistory } from 'vue-router'
 import Navbar from '@com/includes/Navbar.vue';
 import Footer from '@com/includes/Footer.vue';
-import Sidebar from '@com/includes/Sidebar.vue';
+import Sidebar from '@com/includes/SideBar.vue';
 
 import ChatBox from '@com/pages/ChatBox.vue';
 // Add import at the top
