@@ -16,6 +16,8 @@ import Footer from '@com/includes/Footer.vue';
 import Sidebar from '@com/includes/Sidebar.vue';
 
 import ChatBox from '@com/pages/ChatBox.vue';
+// Add import at the top
+import User from '@com/pages/User.vue';
 
 import { useStore } from 'vuex';
 function authorize(roles) {
@@ -113,6 +115,19 @@ const router = createRouter({
       meta: { guard: true },
       beforeEnter: authorize(['admin'])
     },
+
+    // Add route inside the routes array (after backups route)
+    {
+      path: '/users',
+      name: 'users',
+      components: {
+        default: User,
+        ...includes,
+      },
+      meta: { guard: true },
+      beforeEnter: authorize(['admin'])
+    },
+
     {
       path: '/chats/:chatId',
       name: 'chats',
