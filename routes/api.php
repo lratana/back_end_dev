@@ -3,12 +3,12 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\API\ChatController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\BackupController;
 use App\Http\Controllers\GoogleAuthController;
-use App\Http\Controllers\Api\ChatMemberController;
-use App\Http\Controllers\Api\ChatMessageController;
+use App\Http\Controllers\API\ChatMemberController;
+use App\Http\Controllers\API\ChatMessageController;
 
 Route::post('/signup', [AuthController::class, 'signup']); // Register a new user and return token
 Route::post('/signin', [AuthController::class, 'signin']); // Authenticate user and return token
