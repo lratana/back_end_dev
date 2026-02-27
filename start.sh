@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash s
 set -e
 
 chown -R www-data:www-data /var/www/html/bootstrap/cache
