@@ -4,6 +4,7 @@
 @import 'admin-lte/dist/css/adminlte.min.css';
 
 
+
 .nav-item p.chat-name {
     position: absolute;
     left: 55px;
@@ -58,4 +59,297 @@
         opacity: 1;
         /* Fully visible, optional if infinite is used */
     }
+
+
+}
+
+/* ===============================
+   Google Calendar (TimeGrid) Theme
+   Put in main.css (GLOBAL)
+   =============================== */
+/* =========================
+   Booking Status Colors (FORCE)
+   Put in main.css (GLOBAL)
+   ========================= */
+
+/* ✅ Scheduled (Blue) */
+.fc .ev-scheduled.fc-event,
+.fc .ev-scheduled .fc-event-main,
+.fc .ev-scheduled .fc-event-main-frame {
+    background: #e8f0fe !important;
+    border-color: #aecbfa !important;
+    color: #1a73e8 !important;
+}
+
+.fc .ev-scheduled .fc-event-title,
+.fc .ev-scheduled .fc-event-time {
+    color: #1a73e8 !important;
+}
+
+/* ✅ Completed (Green) */
+.fc .ev-completed.fc-event,
+.fc .ev-completed .fc-event-main,
+.fc .ev-completed .fc-event-main-frame {
+    background: #e6f4ea !important;
+    border-color: #a8dab5 !important;
+    color: #137333 !important;
+}
+
+.fc .ev-completed .fc-event-title,
+.fc .ev-completed .fc-event-time {
+    color: #137333 !important;
+}
+
+/* ✅ Cancelled (Red) */
+.fc .ev-cancelled.fc-event,
+.fc .ev-cancelled .fc-event-main,
+.fc .ev-cancelled .fc-event-main-frame {
+    background: #fce8e6 !important;
+    border-color: #f3b7b3 !important;
+    color: #c5221f !important;
+}
+
+.fc .ev-cancelled .fc-event-title,
+.fc .ev-cancelled .fc-event-time {
+    color: #c5221f !important;
+}
+
+/* ✅ Make events look like pills (month/week/day) */
+.fc .fc-daygrid-event,
+.fc .fc-timegrid-event {
+    border-radius: 10px !important;
+    padding: 2px 6px !important;
+    margin: 2px 6px !important;
+    box-shadow: none !important;
+}
+
+/* ✅ Remove default dot (optional, makes cleaner like Google) */
+.fc .fc-daygrid-event-dot {
+    display: none !important;
+}
+
+/* =========================
+   Calendar Wrapper (Google-ish)
+   ========================= */
+.gc-wrap {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, .08);
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .06);
+}
+
+/* =========================
+   Legend
+   ========================= */
+.calendar-legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #202124;
+    font-size: 13px;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, .12);
+}
+
+.legend-color.scheduled {
+    background: #1a73e8;
+}
+
+.legend-color.completed {
+    background: #137333;
+}
+
+.legend-color.cancelled {
+    background: #c5221f;
+}
+
+/* =========================
+   FullCalendar base typography
+   ========================= */
+.fc {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-size: 13.5px;
+    color: #202124;
+}
+
+/* Header toolbar */
+.fc .fc-toolbar {
+    margin: 6px 6px 12px;
+    gap: 10px;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #202124;
+}
+
+/* Buttons like Google */
+.fc .fc-button {
+    border-radius: 999px !important;
+    border: 1px solid rgba(0, 0, 0, .12) !important;
+    background: #fff !important;
+    color: #1f2937 !important;
+    padding: 6px 12px !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+.fc .fc-button:hover {
+    background: #f6f8fc !important;
+}
+
+.fc .fc-button:focus,
+.fc .fc-button:active {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+    background: #e8f0fe !important;
+    border-color: #c7d2fe !important;
+    color: #1a73e8 !important;
+}
+
+/* Grid cleanup */
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid table {
+    border: none !important;
+}
+
+.fc .fc-col-header-cell {
+    background: #f8fafc;
+    border: none !important;
+}
+
+.fc .fc-col-header-cell-cushion {
+    padding: 10px 8px !important;
+    font-weight: 800;
+    color: #5f6368;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    font-size: 12px;
+}
+
+/* Day cells */
+.fc .fc-daygrid-day {
+    border: 1px solid rgba(0, 0, 0, .06) !important;
+    background: #fff;
+}
+
+.fc .fc-daygrid-day:hover {
+    background: #f8fafc;
+}
+
+/* Day number */
+.fc .fc-daygrid-day-number {
+    padding: 8px 10px !important;
+    color: #5f6368;
+    font-weight: 800;
+}
+
+/* Today highlight */
+.fc .fc-day-today {
+    background: #e8f0fe !important;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+    background: #1a73e8;
+    color: #fff;
+    border-radius: 999px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 6px 6px 0 6px;
+}
+
+/* Pills */
+.fc .fc-daygrid-event,
+.fc .fc-timegrid-event {
+    border-radius: 10px !important;
+    padding: 2px 6px !important;
+    margin: 2px 6px !important;
+    box-shadow: none !important;
+}
+
+/* "+ more" */
+.fc .fc-daygrid-more-link {
+    color: #1a73e8;
+    font-weight: 800;
+    margin-left: 8px;
+}
+
+/* Remove focus outline */
+.fc a:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* =========================
+   ✅ Booking Status Colors (FORCE) — THIS MAKES IT SHOW "តែម្តង"
+   ========================= */
+
+/* scheduled */
+.fc .ev-scheduled.fc-event,
+.fc .ev-scheduled .fc-event-main,
+.fc .ev-scheduled .fc-event-main-frame {
+    background: #e8f0fe !important;
+    /* border: 1px solid #aecbfa !important; */
+    color: #1a73e8 !important;
+}
+
+.fc .ev-scheduled .fc-event-title,
+.fc .ev-scheduled .fc-event-time {
+    color: #1a73e8 !important;
+}
+
+/* completed */
+.fc .ev-completed.fc-event,
+.fc .ev-completed .fc-event-main,
+.fc .ev-completed .fc-event-main-frame {
+    background: #e6f4ea !important;
+    border: 1px solid #a8dab5 !important;
+    color: #137333 !important;
+}
+
+.fc .ev-completed .fc-event-title,
+.fc .ev-completed .fc-event-time {
+    color: #137333 !important;
+}
+
+/* cancelled */
+.fc .ev-cancelled.fc-event,
+.fc .ev-cancelled .fc-event-main,
+.fc .ev-cancelled .fc-event-main-frame {
+    background: #fce8e6 !important;
+    border: 1px solid #f3b7b3 !important;
+    color: #c5221f !important;
+}
+
+.fc .ev-cancelled .fc-event-title,
+.fc .ev-cancelled .fc-event-time {
+    color: #c5221f !important;
+}
+
+/* optional: remove default dot */
+.fc .fc-daygrid-event-dot {
+    display: none !important;
 }

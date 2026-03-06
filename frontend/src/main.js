@@ -1,6 +1,7 @@
 import 'admin-lte/dist/js/adminlte.min.js';
 import 'admin-lte/plugins/bootstrap/js/bootstrap.bundle.min.js';
 
+
 import Swal from 'sweetalert2';
 window.Swal = Swal;
 
@@ -46,6 +47,8 @@ window.Echo = new Echo({
 import jquery from 'jquery';
 window.$ = jquery;
 window.jQuery = jquery;
+
+
 
 window.API_URL = import.meta.env.VITE_API_URL;
 

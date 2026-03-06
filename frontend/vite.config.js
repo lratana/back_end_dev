@@ -30,5 +30,17 @@ export default defineConfig({
       useFsEvents: true,
       interval: 1000,
     }
-  }
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vue: ['vue', 'vue-router', 'vuex'],
+          adminlte: ['admin-lte'],
+          vendor: ['axios', 'jquery', 'sweetalert2'],
+        },
+      },
+    },
+  },
 })

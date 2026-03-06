@@ -1,14 +1,18 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\API\ChatController;
-use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\BackupController;
-use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\API\BookingController;
+use App\Http\Controllers\API\ChatController;
 use App\Http\Controllers\API\ChatMemberController;
 use App\Http\Controllers\API\ChatMessageController;
+use App\Http\Controllers\API\DepartmentController;
+use App\Http\Controllers\API\RoomController;
+use App\Http\Controllers\API\RoomImageController;
+use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\GoogleAuthController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 Route::post('/signup', [AuthController::class, 'signup']); // Register a new user and return token
 Route::post('/signin', [AuthController::class, 'signin']); // Authenticate user and return token
@@ -25,12 +29,12 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleC
 // Group protected routes under auth:sanctum middleware
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/signout', [AuthController::class, 'signout']);
-    Route::patch('/token/refresh', [AuthController::class, 'refreshToken']);
+    Route::PATCH('/token/refresh', [AuthController::class, 'refreshToken']);
     Route::get('/verify/account', [AuthController::class, 'verifyAccount']);
-    Route::patch('/password/change', [AuthController::class, 'changePassword']);
-    Route::patch('/password/create', [AuthController::class, 'createPassword']);
+    Route::put('/password/change', [AuthController::class, 'changePassword']);
+    Route::put('/password/create', [AuthController::class, 'createPassword']);
     // ... existing routes
-    Route::patch('/update/photo', [AuthController::class, 'updateUserPhoto']);
+    Route::put('/update/photo', [AuthController::class, 'updateUserPhoto']);
 
 
     // Backup routes
@@ -51,6 +55,36 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::delete('/delete/{id}', [UserController::class, 'deleteUser']);
             });
         });
+        // Departments
+        Route::prefix('departments')->group(function () {
+            Route::get('/', [DepartmentController::class, 'index']);
+            Route::post('/create', [DepartmentController::class, 'store']);
+            Route::get('/read/{department}', [DepartmentController::class, 'show']);
+            Route::put('/update/{department}', [DepartmentController::class, 'update']);
+            Route::delete('/delete/{department}', [DepartmentController::class, 'destroy']);
+        });
+        // Rooms
+        Route::prefix('rooms')->group(function () {
+
+            Route::get('/', [RoomController::class, 'index']);
+            Route::post('/create', [RoomController::class, 'store']);
+
+            Route::get('/read/{room}', [RoomController::class, 'show']);
+            Route::post('/update/{room}', [RoomController::class, 'update']);
+
+            Route::delete('/delete/{room}', [RoomController::class, 'destroy']);
+
+            Route::delete('/delete-image/{room}/{image}', [RoomController::class, 'deleteImage']);
+        });
+        // Room Images
+        Route::prefix('room-images')->group(function () {
+
+            Route::post('/upload/{roomId}', [RoomImageController::class, 'upload']);
+
+            Route::delete('/delete/{imageId}', [RoomImageController::class, 'delete']);
+        });
+        // Booking MS
+
     });
     // ... existing routes
     // User API Routes
@@ -63,7 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ChatController::class, 'getChats']);
         Route::post('/create', [ChatController::class, 'createChat']);
         Route::get('/read/{chatId}', [ChatController::class, 'readChat']);
-        Route::patch('/update/{chatId}', [ChatController::class, 'updateGroupChat']);
+        Route::put('/update/{chatId}', [ChatController::class, 'updateGroupChat']);
         Route::delete('/delete/{chatId}', [ChatController::class, 'deleteGroupChat']);
         Route::post('/leave/{chatId}', [ChatController::class, 'leaveGroupChat']);
         Route::get('/read/{chatId}/{folder}/{filename}', [ChatController::class, 'readChatFile']);
@@ -72,7 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Chat messages
         Route::get('/{chatId}/messages', [ChatMessageController::class, 'getMessages']);
         Route::post('/{chatId}/messages/create', [ChatMessageController::class, 'createMessage']);
-        Route::patch('/{chatId}/messages/update/{messageId}', [ChatMessageController::class, 'updateMessage']);
+        Route::put('/{chatId}/messages/update/{messageId}', [ChatMessageController::class, 'updateMessage']);
         Route::delete('/{chatId}/messages/delete/{messageId}', [ChatMessageController::class, 'deleteMessage']);
         Route::post('/{chatId}/messages/seen/{messageId}', [ChatMessageController::class, 'markMessageAsSeen']);
         Route::post('/{chatId}/messages/seen-all', [ChatMessageController::class, 'markAllMessagesAsSeen']);
@@ -80,7 +114,33 @@ Route::middleware('auth:sanctum')->group(function () {
         // Chat members
         Route::get('/{chatId}/members', [ChatMemberController::class, 'getMembers']);
         Route::post('/{chatId}/members/add', [ChatMemberController::class, 'addMember']);
-        Route::patch('/{chatId}/members/update/{memberId}', [ChatMemberController::class, 'updateMember']);
+        Route::put('/{chatId}/members/update/{memberId}', [ChatMemberController::class, 'updateMember']);
         Route::delete('/{chatId}/members/remove/{memberId}', [ChatMemberController::class, 'removeMember']);
     });
+
+    // Bookings
+    Route::prefix('bookings')->group(function () {
+        Route::get('/', [BookingController::class, 'index']);
+        Route::post('/create', [BookingController::class, 'store']);
+        Route::get('/read/{booking}', [BookingController::class, 'show']);
+        Route::put('/update/{booking}', [BookingController::class, 'update']);
+
+        Route::get('/availability', [BookingController::class, 'availability']);
+        Route::get('/calendar', [BookingController::class, 'calendar']);
+
+        Route::put('/request-cancel/{booking}', [BookingController::class, 'requestCancel']);
+
+        Route::put('/approve/{booking}', [BookingController::class, 'approve']);
+        Route::put('/reject/{booking}', [BookingController::class, 'reject']);
+        Route::put('/confirm-cancel/{booking}', [BookingController::class, 'confirmCancel']);
+        Route::put('/admin-cancel/{booking}', [BookingController::class, 'adminCancel']);
+        Route::delete('/delete/{booking}', [BookingController::class, 'destroy']);
+    });
+
+    Route::prefix('rooms')->group(function () {
+        Route::get('/', [RoomController::class, 'index']);
+        Route::get('/read/{room}', [RoomController::class, 'show']);
+    });
+
+    Route::get('/dashboard', [BookingController::class, 'dashboard']);
 });

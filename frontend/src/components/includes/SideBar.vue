@@ -1,8 +1,8 @@
 <template>
-    <aside class="main-sidebar sidebar-light-primary elevation-4" style="height: auto">
+    <aside class="main-sidebar sidebar-dark-primary elevation-4" style="height: auto">
         <router-link :to="{ name: 'dashboard' }" class="brand-link">
             <img :src="logoImg" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: 0.8" />
-            <span class="brand-text font-weight-light">AdminLTE 3</span>
+            <span class="brand-text font-weight-light">SMMR System</span>
         </router-link>
 
         <div class="sidebar">
@@ -25,6 +25,40 @@
                             <p>Dashboard</p>
                         </router-link>
                     </li>
+
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'bookings' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-calendar-check"></i>
+                            <p>Bookings</p>
+                        </router-link>
+                    </li>
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'bookingscalendar' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-calendar-check"></i>
+                            <p>BookingsCalendar</p>
+                        </router-link>
+                    </li>
+
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'rooms' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-door-open"></i>
+                            <p>Rooms</p>
+                        </router-link>
+                    </li>
+
+                    <li v-if="isAdmin" class="nav-item">
+                        <router-link :to="{ name: 'departments' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-building"></i>
+                            <p>Departments</p>
+                        </router-link>
+                    </li>
+
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'calendar' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-calendar-alt"></i>
+                            <p>Calendar</p>
+                        </router-link>
+                    </li>
                     <li v-if="isAdmin" class="nav-header">Systems</li>
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'backups' }" class="nav-link" active-class="active">
@@ -38,6 +72,28 @@
                             <p>Users</p>
                         </router-link>
                     </li>
+
+                    <!-- <li class="nav-item">
+                        <router-link :to="{ name: 'profile' }" class="nav-link" active-class="active">
+                            <i class="far fa-user nav-icon"></i>
+                            <p>Profile</p>
+                        </router-link>
+                    </li>
+
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'change-password' }" class="nav-link" active-class="active">
+                            <i class="fas fa-key nav-icon"></i>
+                            <p>Change Password</p>
+                        </router-link>
+                    </li>
+
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'preferences' }" class="nav-link" active-class="active">
+                            <i class="fas fa-sliders-h nav-icon"></i>
+                            <p>Preferences</p>
+                        </router-link>
+                    </li> -->
+
 
                 </ul>
             </nav>
@@ -108,6 +164,24 @@ const route = useRoute();
 const store = useStore();
 const userData = computed(() => store.state.user);
 const isAdmin = computed(() => userData.value && userData.value.level === "admin");
+
+// Settings menu state
+const settingsRoutes = ["profile", "change-password", "preferences"];
+const isSettingsOpen = ref(false);
+
+watch(
+    () => route.name,
+    (name) => {
+        if (settingsRoutes.includes(name)) {
+            isSettingsOpen.value = true;
+        }
+    },
+    { immediate: true }
+);
+
+function toggleSettings() {
+    isSettingsOpen.value = !isSettingsOpen.value;
+}
 
 let searchTimeout = null;
 const searchQuery = ref("");

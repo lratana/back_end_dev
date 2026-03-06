@@ -9,6 +9,12 @@ import GoogleCallbackError from '@com/auth/GoogleCallbackError.vue';
 import UserProfile from '@com/auth/UserProfile.vue';
 import Dashboard from '@com/pages/Dashboard.vue';
 import Backup from '@com/pages/Backup.vue';
+import Booking from '@com/pages/Booking.vue';
+import Rooms from '@/components/pages/Room.vue';
+import Department from '@/components/pages/Department.vue';
+import Calendar from '@/components/pages/Calendar.vue';
+import BookingCalendar from '@/components/pages/BookingCalendar.vue';
+
 
 import { createRouter, createWebHistory } from 'vue-router'
 import Navbar from '@com/includes/Navbar.vue';
@@ -137,6 +143,41 @@ const router = createRouter({
       },
       meta: { guard: true },
     },
+    {
+      path: '/bookings',
+      name: 'bookings',
+      components: { default: Booking, ...includes },
+      meta: { guard: true }
+    },
+    {
+      path: '/rooms',
+      name: 'rooms',
+      components: { default: Rooms, ...includes },
+      meta: { guard: true },
+      // beforeEnter: authorize(['admin'])
+    },
+    {
+      path: "/departments",
+      name: "departments",
+      components: { default: Department, ...includes },
+      meta: { guard: true },
+      beforeEnter: authorize(["admin"]),
+    },
+    {
+      path: "/calendar",
+      name: "calendar",
+      components: { default: Calendar, ...includes },
+      meta: { guard: true },
+    },
+
+    {
+      path: "/bookingscalendar",
+      name: "bookingscalendar",
+      components: { default: BookingCalendar, ...includes },
+      meta: { guard: true },
+      beforeEnter: authorize(['admin', 'user'])
+    },
+
   ],
 })
 
