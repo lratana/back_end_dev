@@ -17,11 +17,16 @@ class RoomController extends Controller
     public function index(Request $request)
     {
         $q = $request->string('q')->toString();
-        $perPage = (int) ($request->get('per_page', 10));
+        $perPage = (int) $request->get('per_page', 10);
 
         $rooms = Room::query()
-            ->when($q, fn($query) => $query->where('name', 'like', "%{$q}%"))
-            ->with(['equipment', 'images', 'department'])
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('name', 'like', "%{$q}%")
+                        ->orWhere('location', 'like', "%{$q}%");
+                });
+            })
+            ->with(['department', 'equipment', 'images'])
             ->latest()
             ->paginate($perPage);
 
@@ -30,7 +35,7 @@ class RoomController extends Controller
 
     public function show(Room $room)
     {
-        $room->load(['equipment', 'images', 'department']);
+        $room->load(['department', 'equipment', 'images']);
 
         return response()->json($room);
     }
@@ -40,15 +45,13 @@ class RoomController extends Controller
         return DB::transaction(function () use ($request) {
             $data = $request->validated();
 
-            $room = new Room([
-                'department_id' => $data['department_id'],
-                'name' => $data['name'],
-                'description' => $data['description'] ?? null,
-                'location' => $data['location'] ?? null,
-                'capacity' => $data['capacity'],
-            ]);
-
-            $room->created_by = $request->user()->id;
+            $room = new Room();
+            $room->department_id = $data['department_id'];
+            $room->name = $data['name'];
+            $room->description = $data['description'] ?? null;
+            $room->location = $data['location'] ?? null;
+            $room->capacity = $data['capacity'];
+            $room->created_by = optional($request->user())->id;
 
             if ($request->hasFile('thumbnail')) {
                 $room->thumbnail_path = $request->file('thumbnail')->store('rooms/thumbnails', 'public');
@@ -58,9 +61,15 @@ class RoomController extends Controller
 
             $equipmentIds = [];
             foreach (($data['equipment'] ?? []) as $name) {
+                $name = trim($name);
+                if ($name === '') {
+                    continue;
+                }
+
                 $eq = Equipment::firstOrCreate(['name' => $name]);
                 $equipmentIds[] = $eq->id;
             }
+
             $room->equipment()->sync($equipmentIds);
 
             $files = $request->file('images', []);
@@ -76,10 +85,10 @@ class RoomController extends Controller
                 ]);
             }
 
-            return response()->json([
-                'message' => 'Room created successfully',
-                'data' => $room->load(['equipment', 'images', 'department']),
-            ], 201);
+            return response()->json(
+                $room->load(['department', 'equipment', 'images']),
+                201
+            );
         });
     }
 
@@ -122,6 +131,11 @@ class RoomController extends Controller
                 $equipmentIds = [];
 
                 foreach (($data['equipment'] ?? []) as $name) {
+                    $name = trim($name);
+                    if ($name === '') {
+                        continue;
+                    }
+
                     $eq = Equipment::firstOrCreate(['name' => $name]);
                     $equipmentIds[] = $eq->id;
                 }
@@ -145,30 +159,32 @@ class RoomController extends Controller
                 }
             }
 
-            return response()->json([
-                'message' => 'Room updated successfully',
-                'data' => $room->load(['equipment', 'images', 'department']),
-            ]);
+            return response()->json(
+                $room->load(['department', 'equipment', 'images'])
+            );
         });
     }
 
     public function destroy(Room $room)
     {
-        // delete thumbnail file
+        $room->loadMissing(['images', 'equipment']);
+
         if ($room->thumbnail_path) {
             Storage::disk('public')->delete($room->thumbnail_path);
         }
 
-        // delete room images files
         foreach ($room->images as $image) {
-            Storage::disk('public')->delete($image->image_path);
+            if ($image->image_path) {
+                Storage::disk('public')->delete($image->image_path);
+            }
+            $image->delete();
         }
 
-        // soft delete room
+        $room->equipment()->detach();
         $room->delete();
 
         return response()->json([
-            'message' => 'Room deleted successfully'
+            'message' => 'Room deleted successfully',
         ]);
     }
 
@@ -176,11 +192,14 @@ class RoomController extends Controller
     {
         abort_unless($image->room_id === $room->id, 404);
 
-        Storage::disk('public')->delete($image->image_path);
+        if ($image->image_path) {
+            Storage::disk('public')->delete($image->image_path);
+        }
+
         $image->delete();
 
         return response()->json([
-            'message' => 'Image deleted successfully'
+            'message' => 'Image deleted successfully',
         ]);
     }
 }

@@ -7,8 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Equipment extends Model
 {
     protected $fillable = ['name'];
+
     public function rooms()
     {
-        return $this->belongsToMany(Room::class, 'room_equipment');
+        return $this->belongsToMany(Room::class, 'room_equipment', 'equipment_id', 'room_id');
     }
 }
