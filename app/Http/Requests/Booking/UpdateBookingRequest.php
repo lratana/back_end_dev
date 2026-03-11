@@ -38,7 +38,12 @@ class UpdateBookingRequest extends FormRequest
 
             'recurrence_days' => [
                 'nullable',
+                'array',
+            ],
+
+            'recurrence_days.*' => [
                 'string',
+                'in:mon,tue,wed,thu,fri,sat,sun',
             ],
 
             'recurrence_period' => [
@@ -70,6 +75,10 @@ class UpdateBookingRequest extends FormRequest
             'end_datetime.date' => 'End datetime must be a valid date.',
 
             'recurrence_type.in' => 'Recurrence type must be none, daily, weekly, or monthly.',
+
+            'recurrence_days.array' => 'Recurrence days must be an array.',
+            'recurrence_days.*.in' => 'Each recurrence day must be one of: mon, tue, wed, thu, fri, sat, sun.',
+
             'recurrence_period.integer' => 'Recurrence period must be a number.',
             'recurrence_period.min' => 'Recurrence period must be at least 1.',
 

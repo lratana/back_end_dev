@@ -1,10 +1,8 @@
 <template>
   <div class="content-wrapper">
-
     <section class="content-header">
       <div class="container-fluid">
         <div class="row mb-2">
-
           <div class="col-sm-6">
             <h1>Dashboard</h1>
           </div>
@@ -17,20 +15,14 @@
               <li class="breadcrumb-item active">Dashboard</li>
             </ol>
           </div>
-
         </div>
       </div>
     </section>
 
-
     <section class="content">
       <div class="container-fluid">
-
-
         <!-- ================= Summary ================= -->
-
         <div class="row">
-
           <div class="col-lg-3 col-6">
             <div class="small-box bg-primary">
               <div class="inner">
@@ -78,94 +70,67 @@
               </div>
             </div>
           </div>
-
         </div>
 
-
         <!-- ================= Filters ================= -->
-
         <div class="card">
-
           <div class="card-header">
-
             <div class="d-flex flex-wrap align-items-center" style="gap:10px;">
-
               <input class="form-control form-control-sm" style="width:200px" placeholder="Search room..."
                 v-model="searchRoom" />
 
-              <select class="form-control form-control-sm" style="width:160px" v-model="filterStatus">
+              <select class="form-control form-control-sm" style="width:180px" v-model="filterStatus">
                 <option value="">All status</option>
-                <option value="scheduled">scheduled</option>
-                <option value="completed">completed</option>
+                <option value="pending">pending</option>
+                <option value="approved">approved</option>
+                <option value="rejected">rejected</option>
+                <option value="cancel_requested">cancel_requested</option>
                 <option value="cancelled">cancelled</option>
+                <option value="completed">completed</option>
               </select>
-
 
               <button class="btn btn-sm btn-primary" @click="fetchDashboard" :disabled="loading">
                 <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
                 Refresh
               </button>
 
-
               <router-link class="btn btn-sm btn-success ml-auto" :to="{ name: 'bookings' }">
                 New Booking
               </router-link>
 
-
               <router-link class="btn btn-sm btn-outline-secondary" :to="{ name: 'calendar' }">
                 Calendar
               </router-link>
-
             </div>
-
           </div>
-
         </div>
 
-
-
         <!-- ================= Alerts ================= -->
-
         <div v-if="error" class="alert alert-danger">
           {{ error }}
         </div>
 
-
-
         <div class="row">
-
-
           <!-- ================= Upcoming ================= -->
-
           <div class="col-lg-6">
-
             <div class="card card-success">
-
               <div class="card-header">
-                <h3 class="card-title">
-                  Upcoming Bookings
-                </h3>
+                <h3 class="card-title">Upcoming Bookings</h3>
               </div>
 
-
               <div class="card-body p-0">
-
                 <div v-if="loading" class="p-3 text-center">
                   <i class="fas fa-spinner fa-spin"></i>
                   Loading...
                 </div>
 
-
                 <div v-else>
-
                   <div v-if="filteredUpcoming.length === 0" class="p-3 text-muted">
                     No upcoming bookings
                   </div>
 
                   <div v-else class="table-responsive">
-
                     <table class="table table-striped table-hover mb-0">
-
                       <thead>
                         <tr>
                           <th>Room</th>
@@ -176,9 +141,7 @@
                       </thead>
 
                       <tbody>
-
                         <tr v-for="b in filteredUpcoming" :key="b.id">
-
                           <td>
                             <strong>{{ b.room?.name ?? 'N/A' }}</strong>
                           </td>
@@ -192,59 +155,39 @@
                           </td>
 
                           <td>
-                            <span class="badge badge-success">
+                            <span class="badge" :class="statusBadgeClass(b.status)">
                               {{ b.status }}
                             </span>
                           </td>
-
                         </tr>
-
                       </tbody>
                     </table>
-
                   </div>
-
                 </div>
-
               </div>
-
             </div>
-
           </div>
 
-
-
           <!-- ================= Recent ================= -->
-
           <div class="col-lg-6">
-
             <div class="card card-info">
-
               <div class="card-header">
-                <h3 class="card-title">
-                  Recent Bookings
-                </h3>
+                <h3 class="card-title">Recent Bookings</h3>
               </div>
 
-
               <div class="card-body p-0">
-
                 <div v-if="loading" class="p-3 text-center">
                   <i class="fas fa-spinner fa-spin"></i>
                   Loading...
                 </div>
 
-
                 <div v-else>
-
                   <div v-if="filteredRecent.length === 0" class="p-3 text-muted">
                     No recent bookings
                   </div>
 
                   <div v-else class="table-responsive">
-
                     <table class="table table-striped table-hover mb-0">
-
                       <thead>
                         <tr>
                           <th>Room</th>
@@ -254,9 +197,7 @@
                       </thead>
 
                       <tbody>
-
                         <tr v-for="b in filteredRecent" :key="b.id">
-
                           <td>
                             <strong>{{ b.room?.name ?? 'N/A' }}</strong>
                           </td>
@@ -270,184 +211,136 @@
                               {{ b.status }}
                             </span>
                           </td>
-
                         </tr>
-
                       </tbody>
-
                     </table>
-
                   </div>
-
                 </div>
-
               </div>
-
             </div>
-
           </div>
-
         </div>
-
 
       </div>
     </section>
   </div>
 </template>
 
-
-
 <script setup>
+import { ref, computed, onMounted } from "vue";
 
-import { ref, computed, onMounted } from "vue"
+const loading = ref(false);
+const error = ref("");
 
-const loading = ref(false)
-const error = ref("")
-
-const upcoming = ref([])
-const recent = ref([])
+const upcoming = ref([]);
+const recent = ref([]);
 
 const stats = ref({
   today: 0,
   upcoming: 0,
   week: 0,
   cancelled: 0
-})
+});
 
-
-const searchRoom = ref("")
-const filterStatus = ref("")
-
-
+const searchRoom = ref("");
+const filterStatus = ref("");
 
 function normalizeDt(dt) {
-  if (!dt) return null
-  return String(dt).replace(" ", "T")
+  if (!dt) return null;
+  return String(dt).replace(" ", "T");
 }
-
 
 function formatDateTime(dt) {
+  if (!dt) return "-";
 
-  if (!dt) return "-"
+  const d = new Date(normalizeDt(dt));
 
-  const d = new Date(normalizeDt(dt))
+  if (Number.isNaN(d.getTime())) {
+    return String(dt);
+  }
 
-  if (Number.isNaN(d.getTime()))
-    return String(dt)
-
-  return d.toLocaleString()
-
+  return d.toLocaleString();
 }
-
-
 
 function statusBadgeClass(status) {
-
   switch (status) {
-
-    case "scheduled":
-      return "badge-success"
-
+    case "pending":
+      return "badge-warning";
+    case "approved":
+      return "badge-success";
+    case "rejected":
+      return "badge-danger";
+    case "cancel_requested":
+      return "badge-info";
     case "cancelled":
-      return "badge-danger"
-
+      return "badge-secondary";
     case "completed":
-      return "badge-secondary"
-
+      return "badge-primary";
     default:
-      return "badge-primary"
-
+      return "badge-dark";
   }
-
 }
 
-
-
 const filteredUpcoming = computed(() => {
+  let list = [...upcoming.value];
 
-  let list = [...upcoming.value]
+  if (filterStatus.value) {
+    list = list.filter((b) => b.status === filterStatus.value);
+  }
 
-  if (filterStatus.value)
-    list = list.filter(b => b.status === filterStatus.value)
+  if (searchRoom.value) {
+    list = list.filter((b) =>
+      (b.room?.name ?? "").toLowerCase().includes(searchRoom.value.toLowerCase())
+    );
+  }
 
-  if (searchRoom.value)
-    list = list.filter(b =>
-      (b.room?.name ?? "")
-        .toLowerCase()
-        .includes(searchRoom.value.toLowerCase())
-    )
-
-  return list
-
-})
-
-
+  return list;
+});
 
 const filteredRecent = computed(() => {
+  let list = [...recent.value];
 
-  let list = [...recent.value]
+  if (filterStatus.value) {
+    list = list.filter((b) => b.status === filterStatus.value);
+  }
 
-  if (filterStatus.value)
-    list = list.filter(b => b.status === filterStatus.value)
+  if (searchRoom.value) {
+    list = list.filter((b) =>
+      (b.room?.name ?? "").toLowerCase().includes(searchRoom.value.toLowerCase())
+    );
+  }
 
-  if (searchRoom.value)
-    list = list.filter(b =>
-      (b.room?.name ?? "")
-        .toLowerCase()
-        .includes(searchRoom.value.toLowerCase())
-    )
-
-  return list
-
-})
-
-
+  return list;
+});
 
 async function fetchDashboard() {
-
-  loading.value = true
-  error.value = ""
+  loading.value = true;
+  error.value = "";
 
   try {
+    const res = await window.axios.get(`${window.API_URL}/dashboard`);
 
-    const res = await window.axios.get(`${window.API_URL}/dashboard`)
+    upcoming.value = res.data?.upcoming ?? [];
+    recent.value = res.data?.recent ?? [];
 
-    upcoming.value = res.data?.upcoming ?? []
-    recent.value = res.data?.recent ?? []
-
-    stats.value.today = res.data?.today ?? 0
-    stats.value.upcoming = res.data?.upcoming_count ?? upcoming.value.length
-    stats.value.week = res.data?.week ?? 0
-    stats.value.cancelled = res.data?.cancelled ?? 0
-    console.log("Error or not" + res.data);
-  }
-  catch (e) {
-
+    stats.value.today = res.data?.today ?? 0;
+    stats.value.upcoming = res.data?.upcoming_count ?? upcoming.value.length;
+    stats.value.week = res.data?.week ?? 0;
+    stats.value.cancelled = res.data?.cancelled ?? 0;
+  } catch (e) {
     error.value =
       e?.response?.data?.message ||
       e?.message ||
-      "Failed to load dashboard"
-
+      "Failed to load dashboard";
+  } finally {
+    loading.value = false;
   }
-  finally {
-
-    loading.value = false
-
-  }
-
 }
 
-
-
 onMounted(() => {
-
-  fetchDashboard()
-
-})
-
+  fetchDashboard();
+});
 </script>
-
-
 
 <style scoped>
 .table td,

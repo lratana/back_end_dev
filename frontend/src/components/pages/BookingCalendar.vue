@@ -129,6 +129,9 @@
                             <label>Recurrence Days</label>
                             <input v-model="bookingForm.recurrence_days" type="text" class="form-control"
                                 placeholder="mon,tue or wed,fri" />
+                            <small class="text-muted">
+                                Use day codes: mon, tue, wed, thu, fri, sat, sun
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -210,7 +213,7 @@
                                 </tr>
                                 <tr v-if="selected.recurrence_until">
                                     <th>Recurrence Until</th>
-                                    <td>{{ selected.recurrence_until }}</td>
+                                    <td>{{ fmtDateOnly(selected.recurrence_until) }}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -334,6 +337,7 @@ function showCreateModal() {
 
 function hideCreateModal() {
     if (!window.$ || !createModal.value) return;
+    resetForm();
     window.$(createModal.value).modal("hide");
 }
 
@@ -344,6 +348,7 @@ function showDetailModal() {
 
 function hideDetailModal() {
     if (!window.$ || !detailModal.value) return;
+    selected.value = null;
     window.$(detailModal.value).modal("hide");
 }
 
@@ -375,9 +380,16 @@ function fmt(dt) {
     return d.toLocaleString();
 }
 
+function fmtDateOnly(dt) {
+    if (!dt) return "-";
+    const d = new Date(normalizeDt(dt));
+    if (Number.isNaN(d.getTime())) return String(dt);
+    return d.toLocaleDateString();
+}
+
 function formatForInput(dt) {
     if (!dt) return "";
-    const d = new Date(dt);
+    const d = new Date(normalizeDt(dt));
     if (Number.isNaN(d.getTime())) return "";
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -389,7 +401,13 @@ function formatForInput(dt) {
 
 function parseRecurrenceDays(value) {
     if (!value) return null;
-    if (Array.isArray(value)) return value;
+
+    if (Array.isArray(value)) {
+        return value
+            .map((x) => String(x).trim().toLowerCase())
+            .filter(Boolean);
+    }
+
     return String(value)
         .split(",")
         .map((x) => x.trim().toLowerCase())
@@ -539,6 +557,13 @@ function refetch() {
 }
 
 async function onDateSelect(selectInfo) {
+    const now = new Date();
+
+    if (selectInfo.start < now) {
+        error.value = "You cannot create a booking in the past.";
+        return;
+    }
+
     resetForm();
     await loadRooms();
 
@@ -561,6 +586,37 @@ async function submitCreateBooking() {
         return;
     }
 
+    const start = new Date(normalizeDt(bookingForm.start_datetime));
+    const end = new Date(normalizeDt(bookingForm.end_datetime));
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        formError.value = "Invalid start or end datetime";
+        return;
+    }
+
+    if (end <= start) {
+        formError.value = "End datetime must be after start datetime";
+        return;
+    }
+
+    const recurrenceDays = parseRecurrenceDays(bookingForm.recurrence_days);
+    const recurrencePeriod = bookingForm.recurrence_period ? Number(bookingForm.recurrence_period) : null;
+
+    if (bookingForm.recurrence_type === "weekly" && (!recurrenceDays || recurrenceDays.length === 0)) {
+        formError.value = "Weekly recurrence requires at least one recurrence day.";
+        return;
+    }
+
+    if (bookingForm.recurrence_type !== "none" && !recurrencePeriod) {
+        formError.value = "Recurrence period is required for recurring bookings.";
+        return;
+    }
+
+    if (bookingForm.recurrence_type !== "none" && !bookingForm.recurrence_until) {
+        formError.value = "Recurrence until is required for recurring bookings.";
+        return;
+    }
+
     saving.value = true;
 
     try {
@@ -569,8 +625,8 @@ async function submitCreateBooking() {
             start_datetime: toMysqlDatetime(bookingForm.start_datetime),
             end_datetime: toMysqlDatetime(bookingForm.end_datetime),
             recurrence_type: bookingForm.recurrence_type || "none",
-            recurrence_days: parseRecurrenceDays(bookingForm.recurrence_days),
-            recurrence_period: bookingForm.recurrence_period ? Number(bookingForm.recurrence_period) : null,
+            recurrence_days: recurrenceDays,
+            recurrence_period: recurrencePeriod,
             recurrence_until: bookingForm.recurrence_until || null,
         });
 
@@ -999,3 +1055,5 @@ const calendarOptions = {
     background: #f8f9fa;
 }
 </style>
+please help me check all code above and be honest if there are any errors or anything should be improved please fix for
+me as well.

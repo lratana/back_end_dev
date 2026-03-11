@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Requests\Booking\UpdateBookingRequest;
 use App\Models\Booking;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -315,6 +316,10 @@ class BookingController extends Controller
     public function dashboard(Request $request)
     {
         $now = now();
+        $todayStart = now()->copy()->startOfDay();
+        $todayEnd = now()->copy()->endOfDay();
+        $weekStart = now()->copy()->startOfWeek();
+        $weekEnd = now()->copy()->endOfWeek();
 
         $baseQuery = Booking::with(['room', 'user']);
 
@@ -334,10 +339,270 @@ class BookingController extends Controller
             ->limit(10)
             ->get();
 
+        $today = (clone $baseQuery)
+            ->whereBetween('start_datetime', [
+                $todayStart->toDateTimeString(),
+                $todayEnd->toDateTimeString(),
+            ])
+            ->count();
+
+        $week = (clone $baseQuery)
+            ->whereBetween('start_datetime', [
+                $weekStart->toDateTimeString(),
+                $weekEnd->toDateTimeString(),
+            ])
+            ->count();
+
+        $cancelled = (clone $baseQuery)
+            ->where('status', 'cancelled')
+            ->count();
+
+        $pending = (clone $baseQuery)
+            ->where('status', 'pending')
+            ->count();
+
+        $approved = (clone $baseQuery)
+            ->where('status', 'approved')
+            ->count();
+
+        $rejected = (clone $baseQuery)
+            ->where('status', 'rejected')
+            ->count();
+
+        $cancelRequested = (clone $baseQuery)
+            ->where('status', 'cancel_requested')
+            ->count();
+
+        $completed = (clone $baseQuery)
+            ->where('status', 'completed')
+            ->count();
+
         return response()->json([
             'upcoming' => $upcoming,
             'recent' => $recent,
+            'today' => $today,
+            'week' => $week,
+            'cancelled' => $cancelled,
+            'upcoming_count' => $upcoming->count(),
+            'pending' => $pending,
+            'approved' => $approved,
+            'rejected' => $rejected,
+            'cancel_requested' => $cancelRequested,
+            'completed' => $completed,
         ]);
+    }
+
+    private function weekdayMap(): array
+    {
+        return [
+            'sun' => 0,
+            'mon' => 1,
+            'tue' => 2,
+            'wed' => 3,
+            'thu' => 4,
+            'fri' => 5,
+            'sat' => 6,
+        ];
+    }
+
+    private function normalizeRecurrenceDays($days): array
+    {
+        if (empty($days)) {
+            return [];
+        }
+
+        if (is_string($days)) {
+            $days = explode(',', $days);
+        }
+
+        if (!is_array($days)) {
+            return [];
+        }
+
+        return collect($days)
+            ->map(fn($d) => strtolower(trim((string) $d)))
+            ->filter(fn($d) => array_key_exists($d, $this->weekdayMap()))
+            ->values()
+            ->all();
+    }
+
+    private function makeOccurrencePayload(Booking $booking, Carbon $occurrenceStart, Carbon $occurrenceEnd, bool $generated = false): array
+    {
+        return [
+            'id' => $generated ? "{$booking->id}_" . $occurrenceStart->format('YmdHis') : $booking->id,
+            'booking_id' => $booking->id,
+            'room_id' => $booking->room_id,
+            'user_id' => $booking->user_id,
+            'start_datetime' => $occurrenceStart->toDateTimeString(),
+            'end_datetime' => $occurrenceEnd->toDateTimeString(),
+            'recurrence_type' => $booking->recurrence_type,
+            'recurrence_days' => $booking->recurrence_days,
+            'recurrence_period' => $booking->recurrence_period,
+            'recurrence_until' => optional($booking->recurrence_until)->toDateString(),
+            'status' => $booking->status,
+            'room' => $booking->room,
+            'user' => $booking->user,
+            'is_generated' => $generated,
+        ];
+    }
+
+    private function expandBookingOccurrences(Booking $booking, Carbon $rangeStart, Carbon $rangeEnd): array
+    {
+        $results = [];
+
+        $baseStart = $booking->start_datetime->copy();
+        $baseEnd = $booking->end_datetime->copy();
+        $durationSeconds = $baseStart->diffInSeconds($baseEnd);
+
+        $recurrenceType = $booking->recurrence_type ?? 'none';
+        $period = (int) ($booking->recurrence_period ?: 1);
+        if ($period < 1) {
+            $period = 1;
+        }
+
+        $until = $booking->recurrence_until
+            ? Carbon::parse($booking->recurrence_until)->endOfDay()
+            : null;
+
+        if ($recurrenceType === 'none') {
+            if ($baseStart < $rangeEnd && $baseEnd > $rangeStart) {
+                $results[] = $this->makeOccurrencePayload($booking, $baseStart, $baseEnd, false);
+            }
+            return $results;
+        }
+
+        if ($recurrenceType === 'daily') {
+            $cursor = $baseStart->copy();
+
+            while ($cursor < $rangeEnd) {
+                if ($until && $cursor > $until) {
+                    break;
+                }
+
+                $occurrenceStart = $cursor->copy();
+                $occurrenceEnd = $occurrenceStart->copy()->addSeconds($durationSeconds);
+
+                if ($occurrenceStart < $rangeEnd && $occurrenceEnd > $rangeStart) {
+                    $results[] = $this->makeOccurrencePayload($booking, $occurrenceStart, $occurrenceEnd, $occurrenceStart->ne($baseStart));
+                }
+
+                $cursor->addDays($period);
+            }
+
+            return $results;
+        }
+
+        if ($recurrenceType === 'weekly') {
+            $days = $this->normalizeRecurrenceDays($booking->recurrence_days);
+
+            if (empty($days)) {
+                $days = [strtolower($baseStart->format('D'))];
+                $days = array_map(function ($d) {
+                    return match ($d) {
+                        'sun' => 'sun',
+                        'mon' => 'mon',
+                        'tue' => 'tue',
+                        'wed' => 'wed',
+                        'thu' => 'thu',
+                        'fri' => 'fri',
+                        'sat' => 'sat',
+                        default => 'mon',
+                    };
+                }, $days);
+            }
+
+            $weekdayMap = $this->weekdayMap();
+
+            $weekStart = $baseStart->copy()->startOfWeek(Carbon::SUNDAY);
+            $baseTime = [
+                'hour' => $baseStart->hour,
+                'minute' => $baseStart->minute,
+                'second' => $baseStart->second,
+            ];
+
+            $weekIndex = 0;
+            while (true) {
+                $currentWeekStart = $weekStart->copy()->addWeeks($weekIndex * $period);
+
+                if ($currentWeekStart >= $rangeEnd && !empty($results)) {
+                    break;
+                }
+
+                foreach ($days as $dayCode) {
+                    $weekday = $weekdayMap[$dayCode];
+                    $occurrenceStart = $currentWeekStart->copy()
+                        ->addDays($weekday)
+                        ->setTime($baseTime['hour'], $baseTime['minute'], $baseTime['second']);
+
+                    if ($occurrenceStart->lt($baseStart)) {
+                        continue;
+                    }
+
+                    if ($until && $occurrenceStart->gt($until)) {
+                        continue;
+                    }
+
+                    $occurrenceEnd = $occurrenceStart->copy()->addSeconds($durationSeconds);
+
+                    if ($occurrenceStart < $rangeEnd && $occurrenceEnd > $rangeStart) {
+                        $results[] = $this->makeOccurrencePayload(
+                            $booking,
+                            $occurrenceStart,
+                            $occurrenceEnd,
+                            $occurrenceStart->ne($baseStart)
+                        );
+                    }
+                }
+
+                if ($until && $currentWeekStart->gt($until)) {
+                    break;
+                }
+
+                if ($currentWeekStart > $rangeEnd && !empty($results)) {
+                    break;
+                }
+
+                $weekIndex++;
+                if ($weekIndex > 500) {
+                    break;
+                }
+            }
+
+            usort($results, fn($a, $b) => strcmp($a['start_datetime'], $b['start_datetime']));
+            return $results;
+        }
+
+        if ($recurrenceType === 'monthly') {
+            $cursor = $baseStart->copy();
+            $dayOfMonth = (int) $baseStart->day;
+
+            while ($cursor < $rangeEnd) {
+                if ($until && $cursor > $until) {
+                    break;
+                }
+
+                $occurrenceStart = $cursor->copy();
+                $occurrenceEnd = $occurrenceStart->copy()->addSeconds($durationSeconds);
+
+                if ($occurrenceStart < $rangeEnd && $occurrenceEnd > $rangeStart) {
+                    $results[] = $this->makeOccurrencePayload($booking, $occurrenceStart, $occurrenceEnd, $occurrenceStart->ne($baseStart));
+                }
+
+                $cursor = $cursor->copy()->addMonthsNoOverflow($period);
+
+                if ((int) $cursor->day !== $dayOfMonth) {
+                    $cursor->day = min($dayOfMonth, $cursor->daysInMonth);
+                }
+            }
+
+            return $results;
+        }
+
+        if ($baseStart < $rangeEnd && $baseEnd > $rangeStart) {
+            $results[] = $this->makeOccurrencePayload($booking, $baseStart, $baseEnd, false);
+        }
+
+        return $results;
     }
 
     public function calendar(Request $request)
@@ -347,17 +612,32 @@ class BookingController extends Controller
             'end' => ['required', 'date', 'after:start'],
         ]);
 
+        $rangeStart = Carbon::parse($data['start']);
+        $rangeEnd = Carbon::parse($data['end']);
+
         $query = Booking::with(['room', 'user'])
-            ->whereNotIn('status', ['rejected', 'cancelled'])
-            ->where('start_datetime', '<', $data['end'])
-            ->where('end_datetime', '>', $data['start']);
+            ->whereNotIn('status', ['rejected', 'cancelled']);
 
         if (!$this->isAdmin($request)) {
             $query->where('user_id', $request->user()->id);
         }
 
-        return response()->json(
-            $query->orderBy('start_datetime')->get()
-        );
+        $bookings = $query->orderBy('start_datetime')->get();
+
+        $items = collect();
+
+        foreach ($bookings as $booking) {
+            $occurrences = $this->expandBookingOccurrences($booking, $rangeStart, $rangeEnd);
+
+            foreach ($occurrences as $occurrence) {
+                $items->push($occurrence);
+            }
+        }
+
+        $items = $items
+            ->sortBy('start_datetime')
+            ->values();
+
+        return response()->json($items);
     }
 }

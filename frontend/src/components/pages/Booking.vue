@@ -138,7 +138,8 @@
                             <div class="col-md-12 form-group">
                                 <label>Recurrence days (optional)</label>
                                 <input type="text" class="form-control" v-model="bookingObject.recurrence_days"
-                                    placeholder="Mon,Tue or Wed,Fri" />
+                                    placeholder="mon,tue or wed,fri" />
+                                <small class="text-muted">Use day codes: mon, tue, wed, thu, fri, sat, sun</small>
                             </div>
 
                             <div class="col-12">
@@ -224,7 +225,7 @@
                             </tr>
                             <tr>
                                 <th>Recurrence Until</th>
-                                <td>{{ selectedBooking.recurrence_until ?? "-" }}</td>
+                                <td>{{ fmtDateOnly(selectedBooking.recurrence_until) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -285,6 +286,7 @@
 <script setup>
 import { computed, h, onMounted, reactive, ref } from "vue";
 import { useStore } from "vuex";
+import Swal from "sweetalert2";
 import CustomTable from "../includes/tables/CustomTable.vue";
 import { CloseModal, LoadingModal, MessageModal } from "@func/swal";
 
@@ -355,6 +357,13 @@ function fmt(dt) {
     return d.toLocaleString();
 }
 
+function fmtDateOnly(dt) {
+    if (!dt) return "-";
+    const d = new Date(normalizeDt(dt));
+    if (Number.isNaN(d.getTime())) return String(dt);
+    return d.toLocaleDateString();
+}
+
 function toLocalInput(dt) {
     if (!dt) return "";
     const d = new Date(normalizeDt(dt));
@@ -366,6 +375,19 @@ function toLocalInput(dt) {
 function toMysqlDatetime(dt) {
     if (!dt) return null;
     return String(dt).replace("T", " ");
+}
+
+function normalizeRecurrenceUntil(dt) {
+    if (!dt) return "";
+    return String(dt).slice(0, 10);
+}
+
+function parseRecurrenceDays(value) {
+    if (!value) return null;
+    return String(value)
+        .split(",")
+        .map((x) => x.trim().toLowerCase())
+        .filter(Boolean);
 }
 
 function isPastBooking(booking) {
@@ -577,7 +599,7 @@ function fillFormFromBooking(booking) {
             ? booking.recurrence_days.join(",")
             : (booking.recurrence_days ?? ""),
         recurrence_period: booking.recurrence_period ?? "",
-        recurrence_until: booking.recurrence_until ?? "",
+        recurrence_until: normalizeRecurrenceUntil(booking.recurrence_until),
         status: booking.status ?? "",
     });
 }
@@ -597,15 +619,56 @@ async function saveBooking() {
     try {
         LoadingModal();
 
+        const start = new Date(normalizeDt(bookingObject.start_datetime));
+        const end = new Date(normalizeDt(bookingObject.end_datetime));
+
+        if (!bookingObject.room_id) {
+            formError.value = "Please select room";
+            return;
+        }
+
+        if (!bookingObject.start_datetime || !bookingObject.end_datetime) {
+            formError.value = "Please select start and end datetime";
+            return;
+        }
+
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+            formError.value = "Invalid start or end datetime";
+            return;
+        }
+
+        if (end <= start) {
+            formError.value = "End datetime must be after start datetime";
+            return;
+        }
+
+        const recurrenceDays = parseRecurrenceDays(bookingObject.recurrence_days);
+        const recurrencePeriod = bookingObject.recurrence_period
+            ? Number(bookingObject.recurrence_period)
+            : null;
+
+        if (bookingObject.recurrence_type === "weekly" && (!recurrenceDays || recurrenceDays.length === 0)) {
+            formError.value = "Weekly recurrence requires at least one recurrence day.";
+            return;
+        }
+
+        if (bookingObject.recurrence_type !== "none" && !recurrencePeriod) {
+            formError.value = "Recurrence period is required for recurring bookings.";
+            return;
+        }
+
+        if (bookingObject.recurrence_type !== "none" && !bookingObject.recurrence_until) {
+            formError.value = "Recurrence until is required for recurring bookings.";
+            return;
+        }
+
         const payload = {
-            room_id: bookingObject.room_id ? Number(bookingObject.room_id) : null,
+            room_id: Number(bookingObject.room_id),
             start_datetime: toMysqlDatetime(bookingObject.start_datetime),
             end_datetime: toMysqlDatetime(bookingObject.end_datetime),
             recurrence_type: bookingObject.recurrence_type || "none",
-            recurrence_days: bookingObject.recurrence_days
-                ? bookingObject.recurrence_days.split(",").map((x) => x.trim()).filter(Boolean)
-                : null,
-            recurrence_period: bookingObject.recurrence_period || null,
+            recurrence_days: recurrenceDays,
+            recurrence_period: recurrencePeriod,
             recurrence_until: bookingObject.recurrence_until || null,
         };
 

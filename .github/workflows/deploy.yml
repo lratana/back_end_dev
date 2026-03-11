@@ -3,7 +3,7 @@ env:
   NGINX_CONFIG: starlink98.cloud
 on:
   push:
-    branches: [main]
+    branches: [update_feature]
 
 jobs:
   deploy:
