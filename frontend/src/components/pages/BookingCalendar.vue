@@ -45,27 +45,56 @@
         </section>
     </div>
 
+    <!-- Create Booking Modal -->
     <div class="modal fade" ref="createModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary">
-                    <h5 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Create Booking</h5>
-                    <button type="button" class="close text-white"
-                        @click="hideCreateModal"><span>&times;</span></button>
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus-circle mr-2"></i>
+                        Create Booking
+                    </h5>
+                    <button type="button" class="close text-white" @click="hideCreateModal">
+                        <span>&times;</span>
+                    </button>
                 </div>
 
                 <div class="modal-body">
-                    <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
+                    <div v-if="formError" class="alert alert-danger">
+                        {{ formError }}
+                    </div>
 
                     <div class="form-row">
-                        <div class="form-group col-md-6">
+                        <div class="form-group col-md-6 position-relative">
                             <label>Room <span class="text-danger">*</span></label>
-                            <select v-model="bookingForm.room_id" class="form-control">
-                                <option value="">-- Select Room --</option>
-                                <option v-for="room in rooms" :key="room.id" :value="String(room.id)">
-                                    {{ room.name }}
-                                </option>
-                            </select>
+
+                            <input v-model="roomKeyword" type="text" class="form-control" placeholder="Search room..."
+                                @focus="showRoomDropdown = true" />
+
+                            <div v-if="selectedRoom" class="mt-2">
+                                <span class="badge badge-primary p-2">
+                                    {{ selectedRoom.name }}
+                                    <button type="button" class="btn btn-sm text-white ml-2 p-0 border-0 bg-transparent"
+                                        @click="clearSelectedRoom">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </span>
+                            </div>
+
+                            <div v-if="showRoomDropdown && filteredRooms.length"
+                                class="card mt-1 position-absolute w-100 shadow-sm room-dropdown">
+                                <div class="list-group list-group-flush">
+                                    <button v-for="room in filteredRooms" :key="room.id" type="button"
+                                        class="list-group-item list-group-item-action text-left"
+                                        @click="selectRoom(room)">
+                                        {{ room.name }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <small class="text-muted d-block mt-1">
+                                Search and select one room
+                            </small>
                         </div>
 
                         <div class="form-group col-md-6">
@@ -110,20 +139,25 @@
                 <div class="modal-footer justify-content-between">
                     <button class="btn btn-default" type="button" @click="hideCreateModal">Close</button>
                     <button class="btn btn-primary" type="button" :disabled="saving" @click="submitCreateBooking">
-                        {{ saving ? 'Saving...' : 'Create Booking' }}
+                        {{ saving ? "Saving..." : "Create Booking" }}
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Detail Modal -->
     <div class="modal fade" ref="detailModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info">
-                    <h5 class="modal-title"><i class="fas fa-info-circle mr-2"></i>Booking Detail</h5>
-                    <button type="button" class="close text-white"
-                        @click="hideDetailModal"><span>&times;</span></button>
+                    <h5 class="modal-title">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Booking Detail
+                    </h5>
+                    <button type="button" class="close text-white" @click="hideDetailModal">
+                        <span>&times;</span>
+                    </button>
                 </div>
 
                 <div class="modal-body">
@@ -149,10 +183,12 @@
                                 <tr>
                                     <th>Status</th>
                                     <td>
-                                        <span class="badge" :class="statusBadge(selected.status)">{{ selected.status
-                                            }}</span>
-                                        <span v-if="isPastBooking(selected)"
-                                            class="badge badge-dark ml-2">expired</span>
+                                        <span class="badge" :class="statusBadge(selected.status)">
+                                            {{ selected.status }}
+                                        </span>
+                                        <span v-if="isPastBooking(selected)" class="badge badge-dark ml-2">
+                                            expired
+                                        </span>
                                     </td>
                                 </tr>
                                 <tr v-if="selected.user?.name">
@@ -187,17 +223,34 @@
 
                     <div class="d-flex" style="gap:8px; flex-wrap:wrap;">
                         <button v-if="selected && canRequestCancel(selected)" class="btn btn-warning" type="button"
-                            :disabled="actionLoading" @click="onRequestCancel(selected)">Request Cancel</button>
+                            :disabled="actionLoading" @click="onRequestCancel(selected)">
+                            Request Cancel
+                        </button>
+
                         <button v-if="selected && canApprove(selected)" class="btn btn-success" type="button"
-                            :disabled="actionLoading" @click="onApproveBooking(selected)">Approve</button>
+                            :disabled="actionLoading" @click="onApproveBooking(selected)">
+                            Approve
+                        </button>
+
                         <button v-if="selected && canReject(selected)" class="btn btn-danger" type="button"
-                            :disabled="actionLoading" @click="onRejectBooking(selected)">Reject</button>
+                            :disabled="actionLoading" @click="onRejectBooking(selected)">
+                            Reject
+                        </button>
+
                         <button v-if="selected && canConfirmCancel(selected)" class="btn btn-warning" type="button"
-                            :disabled="actionLoading" @click="onConfirmCancel(selected)">Confirm Cancel</button>
+                            :disabled="actionLoading" @click="onConfirmCancel(selected)">
+                            Confirm Cancel
+                        </button>
+
                         <button v-if="selected && canAdminDirectCancel(selected)" class="btn btn-warning" type="button"
-                            :disabled="actionLoading" @click="onAdminDirectCancel(selected)">Cancel</button>
+                            :disabled="actionLoading" @click="onAdminDirectCancel(selected)">
+                            Cancel
+                        </button>
+
                         <button v-if="selected && canDelete(selected)" class="btn btn-outline-danger" type="button"
-                            :disabled="actionLoading" @click="onDeleteBooking(selected)">Delete</button>
+                            :disabled="actionLoading" @click="onDeleteBooking(selected)">
+                            Delete
+                        </button>
                     </div>
                 </div>
             </div>
@@ -211,6 +264,7 @@ import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+
 import {
     apiGetCalendar,
     apiCreateBooking,
@@ -223,6 +277,7 @@ import {
     apiAdminCancelBooking,
     apiDeleteBooking,
 } from "@func/api/calendar";
+
 import { apiGetRooms } from "@func/api/room";
 
 const calendarRef = ref(null);
@@ -236,9 +291,14 @@ const detailLoading = ref(false);
 
 const error = ref("");
 const formError = ref("");
+
 const selected = ref(null);
 const rooms = ref([]);
 const lastRange = ref({ start: "", end: "" });
+
+const roomKeyword = ref("");
+const selectedRoom = ref(null);
+const showRoomDropdown = ref(false);
 
 const bookingForm = reactive({
     room_id: "",
@@ -257,18 +317,48 @@ const currentUser = computed(() => {
         return null;
     }
 });
+
 const isAdmin = computed(() => currentUser.value?.level === "admin");
+
+const filteredRooms = computed(() => {
+    const keyword = roomKeyword.value.trim().toLowerCase();
+
+    if (!keyword) {
+        return rooms.value.slice(0, 10);
+    }
+
+    return rooms.value
+        .filter((room) => String(room.name || "").toLowerCase().includes(keyword))
+        .slice(0, 10);
+});
+
+function selectRoom(room) {
+    selectedRoom.value = room;
+    bookingForm.room_id = String(room.id);
+    roomKeyword.value = room.name;
+    showRoomDropdown.value = false;
+}
+
+function clearSelectedRoom() {
+    selectedRoom.value = null;
+    bookingForm.room_id = "";
+    roomKeyword.value = "";
+    showRoomDropdown.value = false;
+}
 
 function showCreateModal() {
     if (window.$ && createModal.value) window.$(createModal.value).modal("show");
 }
+
 function hideCreateModal() {
     if (window.$ && createModal.value) window.$(createModal.value).modal("hide");
     resetForm();
 }
+
 function showDetailModal() {
     if (window.$ && detailModal.value) window.$(detailModal.value).modal("show");
 }
+
 function hideDetailModal() {
     if (window.$ && detailModal.value) window.$(detailModal.value).modal("hide");
     selected.value = null;
@@ -277,44 +367,57 @@ function hideDetailModal() {
 function normalizeDt(dt) {
     return dt ? String(dt).replace(" ", "T") : null;
 }
+
 function toMysqlDatetime(value) {
     return value ? String(value).replace("T", " ") : null;
 }
+
 function fmt(dt) {
     if (!dt) return "-";
     const d = new Date(normalizeDt(dt));
     return Number.isNaN(d.getTime()) ? String(dt) : d.toLocaleString();
 }
+
 function fmtDateOnly(dt) {
     if (!dt) return "-";
     const d = new Date(normalizeDt(dt));
     return Number.isNaN(d.getTime()) ? String(dt) : d.toLocaleDateString();
 }
+
 function formatForInput(dt) {
     if (!dt) return "";
     const d = new Date(normalizeDt(dt));
     if (Number.isNaN(d.getTime())) return "";
+
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     const hh = String(d.getHours()).padStart(2, "0");
     const ii = String(d.getMinutes()).padStart(2, "0");
+
     return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
 }
+
 function parseRecurrenceDays(value) {
     if (!value) return null;
-    return String(value).split(",").map(x => x.trim().toLowerCase()).filter(Boolean).join(",");
+    return String(value)
+        .split(",")
+        .map((x) => x.trim().toLowerCase())
+        .filter(Boolean);
 }
+
 function formatRecurrenceDays(value) {
     if (!value) return "-";
     if (Array.isArray(value)) return value.join(", ");
     return String(value);
 }
+
 function isPastBooking(booking) {
     if (!booking?.end_datetime) return false;
     const end = new Date(normalizeDt(booking.end_datetime));
     return !Number.isNaN(end.getTime()) && end.getTime() < Date.now();
 }
+
 function statusBadge(status) {
     switch (status) {
         case "pending": return "badge-warning";
@@ -326,6 +429,7 @@ function statusBadge(status) {
         default: return "badge-dark";
     }
 }
+
 function statusClass(status) {
     if (status === "pending") return "fc-event-pending";
     if (status === "approved") return "fc-event-approved";
@@ -339,18 +443,23 @@ function statusClass(status) {
 function canRequestCancel(booking) {
     return !!booking && !isAdmin.value && !isPastBooking(booking) && ["pending", "approved"].includes(booking.status);
 }
+
 function canApprove(booking) {
     return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending";
 }
+
 function canReject(booking) {
     return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending";
 }
+
 function canConfirmCancel(booking) {
     return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "cancel_requested";
 }
+
 function canAdminDirectCancel(booking) {
     return !!booking && isAdmin.value && !isPastBooking(booking) && ["pending", "approved"].includes(booking.status);
 }
+
 function canDelete(booking) {
     return !!booking && isAdmin.value;
 }
@@ -363,6 +472,7 @@ async function loadRooms() {
         console.error(e);
     }
 }
+
 function resetForm() {
     bookingForm.room_id = "";
     bookingForm.start_datetime = "";
@@ -372,6 +482,10 @@ function resetForm() {
     bookingForm.recurrence_period = "";
     bookingForm.recurrence_until = "";
     formError.value = "";
+
+    roomKeyword.value = "";
+    selectedRoom.value = null;
+    showRoomDropdown.value = false;
 }
 
 async function fetchEvents(info, successCallback, failureCallback) {
@@ -396,7 +510,10 @@ async function fetchEvents(info, successCallback, failureCallback) {
                 end: normalizeDt(b.end_datetime),
                 editable: !isPastBooking(b) && (isAdmin.value || b.status === "pending"),
                 extendedProps: { booking: b },
-                classNames: [statusClass(b.status), isPastBooking(b) ? "fc-event-expired" : ""].filter(Boolean),
+                classNames: [
+                    statusClass(b.status),
+                    isPastBooking(b) ? "fc-event-expired" : "",
+                ].filter(Boolean),
             }))
         );
     } catch (e) {
@@ -419,39 +536,62 @@ async function onDateSelect(selectInfo) {
         error.value = "You cannot create a booking in the past.";
         return;
     }
+
     resetForm();
     await loadRooms();
+
     bookingForm.start_datetime = formatForInput(selectInfo.start);
     bookingForm.end_datetime = formatForInput(selectInfo.end);
+
     showCreateModal();
 }
 
 async function submitCreateBooking() {
     formError.value = "";
 
-    if (!bookingForm.room_id) return formError.value = "Please select room";
-    if (!bookingForm.start_datetime || !bookingForm.end_datetime) return formError.value = "Please select start and end datetime";
+    if (!bookingForm.room_id) {
+        formError.value = "Please select room";
+        return;
+    }
+
+    if (!bookingForm.start_datetime || !bookingForm.end_datetime) {
+        formError.value = "Please select start and end datetime";
+        return;
+    }
 
     const start = new Date(normalizeDt(bookingForm.start_datetime));
     const end = new Date(normalizeDt(bookingForm.end_datetime));
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return formError.value = "Invalid datetime";
-    if (end <= start) return formError.value = "End datetime must be after start datetime";
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        formError.value = "Invalid datetime";
+        return;
+    }
+
+    if (end <= start) {
+        formError.value = "End datetime must be after start datetime";
+        return;
+    }
 
     const recurrenceDays = parseRecurrenceDays(bookingForm.recurrence_days);
     const recurrencePeriod = bookingForm.recurrence_period ? Number(bookingForm.recurrence_period) : null;
 
-    if (bookingForm.recurrence_type === "weekly" && !recurrenceDays) {
-        return formError.value = "Weekly recurrence requires recurrence days.";
+    if (bookingForm.recurrence_type === "weekly" && (!recurrenceDays || recurrenceDays.length === 0)) {
+        formError.value = "Weekly recurrence requires recurrence days.";
+        return;
     }
+
     if (bookingForm.recurrence_type !== "none" && !recurrencePeriod) {
-        return formError.value = "Recurrence period is required.";
+        formError.value = "Recurrence period is required.";
+        return;
     }
+
     if (bookingForm.recurrence_type !== "none" && !bookingForm.recurrence_until) {
-        return formError.value = "Recurrence until is required.";
+        formError.value = "Recurrence until is required.";
+        return;
     }
 
     saving.value = true;
+
     try {
         await apiCreateBooking({
             room_id: Number(bookingForm.room_id),
@@ -462,6 +602,7 @@ async function submitCreateBooking() {
             recurrence_period: recurrencePeriod,
             recurrence_until: bookingForm.recurrence_until || null,
         });
+
         hideCreateModal();
         refetch();
     } catch (e) {
@@ -474,7 +615,12 @@ async function submitCreateBooking() {
 function eventClick(info) {
     const booking = info.event.extendedProps?.booking ?? null;
     if (!booking) return;
-    if (isPastBooking(booking)) return error.value = "This booking has already expired and cannot be opened.";
+
+    if (isPastBooking(booking)) {
+        error.value = "This booking has already expired and cannot be opened.";
+        return;
+    }
+
     selected.value = booking;
     detailLoading.value = false;
     showDetailModal();
@@ -483,13 +629,17 @@ function eventClick(info) {
 async function eventDrop(info) {
     const booking = info.event.extendedProps?.booking;
     if (!booking?.id) return info.revert();
+
     if (isPastBooking(booking)) {
         info.revert();
-        return error.value = "Past bookings cannot be moved.";
+        error.value = "Past bookings cannot be moved.";
+        return;
     }
+
     if (!isAdmin.value && booking.status !== "pending") {
         info.revert();
-        return error.value = "You can only move pending bookings";
+        error.value = "You can only move pending bookings";
+        return;
     }
 
     try {
@@ -498,10 +648,13 @@ async function eventDrop(info) {
             start_datetime: toMysqlDatetime(info.event.start),
             end_datetime: toMysqlDatetime(info.event.end),
             recurrence_type: booking.recurrence_type ?? "none",
-            recurrence_days: booking.recurrence_days ?? null,
+            recurrence_days: Array.isArray(booking.recurrence_days)
+                ? booking.recurrence_days
+                : parseRecurrenceDays(booking.recurrence_days),
             recurrence_period: booking.recurrence_period ?? null,
             recurrence_until: booking.recurrence_until ?? null,
         });
+
         await reloadBookingAfterAction(booking.id);
     } catch (e) {
         info.revert();
@@ -512,13 +665,17 @@ async function eventDrop(info) {
 async function eventResize(info) {
     const booking = info.event.extendedProps?.booking;
     if (!booking?.id) return info.revert();
+
     if (isPastBooking(booking)) {
         info.revert();
-        return error.value = "Past bookings cannot be resized.";
+        error.value = "Past bookings cannot be resized.";
+        return;
     }
+
     if (!isAdmin.value && booking.status !== "pending") {
         info.revert();
-        return error.value = "You can only resize pending bookings";
+        error.value = "You can only resize pending bookings";
+        return;
     }
 
     try {
@@ -527,10 +684,13 @@ async function eventResize(info) {
             start_datetime: toMysqlDatetime(info.event.start),
             end_datetime: toMysqlDatetime(info.event.end),
             recurrence_type: booking.recurrence_type ?? "none",
-            recurrence_days: booking.recurrence_days ?? null,
+            recurrence_days: Array.isArray(booking.recurrence_days)
+                ? booking.recurrence_days
+                : parseRecurrenceDays(booking.recurrence_days),
             recurrence_period: booking.recurrence_period ?? null,
             recurrence_until: booking.recurrence_until ?? null,
         });
+
         await reloadBookingAfterAction(booking.id);
     } catch (e) {
         info.revert();
@@ -545,11 +705,13 @@ async function reloadBookingAfterAction(id) {
     } catch (e) {
         console.error(e);
     }
+
     refetch();
 }
 
 async function onRequestCancel(booking) {
     if (!booking?.id || !window.confirm("Do you want to request cancellation for this booking?")) return;
+
     actionLoading.value = true;
     try {
         await apiRequestCancelBooking(booking.id);
@@ -560,8 +722,10 @@ async function onRequestCancel(booking) {
         actionLoading.value = false;
     }
 }
+
 async function onApproveBooking(booking) {
     if (!booking?.id || !window.confirm("Approve this booking?")) return;
+
     actionLoading.value = true;
     try {
         await apiApproveBooking(booking.id);
@@ -572,8 +736,10 @@ async function onApproveBooking(booking) {
         actionLoading.value = false;
     }
 }
+
 async function onRejectBooking(booking) {
     if (!booking?.id || !window.confirm("Reject this booking?")) return;
+
     actionLoading.value = true;
     try {
         await apiRejectBooking(booking.id);
@@ -584,8 +750,10 @@ async function onRejectBooking(booking) {
         actionLoading.value = false;
     }
 }
+
 async function onConfirmCancel(booking) {
     if (!booking?.id || !window.confirm("Confirm cancel for this booking?")) return;
+
     actionLoading.value = true;
     try {
         await apiConfirmCancelBooking(booking.id);
@@ -596,8 +764,10 @@ async function onConfirmCancel(booking) {
         actionLoading.value = false;
     }
 }
+
 async function onAdminDirectCancel(booking) {
     if (!booking?.id || !window.confirm("Cancel this booking directly as admin?")) return;
+
     actionLoading.value = true;
     try {
         await apiAdminCancelBooking(booking.id);
@@ -608,8 +778,10 @@ async function onAdminDirectCancel(booking) {
         actionLoading.value = false;
     }
 }
+
 async function onDeleteBooking(booking) {
     if (!booking?.id || !window.confirm("Delete this booking permanently?")) return;
+
     actionLoading.value = true;
     try {
         await apiDeleteBooking(booking.id);
@@ -658,6 +830,10 @@ const calendarOptions = {
     background: #fff;
     border-radius: 10px;
     overflow: hidden;
+}
+
+.room-dropdown {
+    z-index: 1055;
 }
 
 .calendar-legend {
