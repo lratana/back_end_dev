@@ -175,7 +175,6 @@ const router = createRouter({
       name: "bookingscalendar",
       components: { default: BookingCalendar, ...includes },
       meta: { guard: true },
-      beforeEnter: authorize(['admin', 'user'])
     },
 
   ],

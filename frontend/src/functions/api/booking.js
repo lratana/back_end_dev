@@ -2,12 +2,12 @@ export async function apiGetBookings(params = {}) {
     return await window.axios.get(`${window.API_URL}/bookings`, { params });
 }
 
-export async function apiGetBooking(id) {
-    return await window.axios.get(`${window.API_URL}/bookings/read/${id}`);
-}
-
 export async function apiCreateBooking(payload) {
     return await window.axios.post(`${window.API_URL}/bookings/create`, payload);
+}
+
+export async function apiGetBooking(id) {
+    return await window.axios.get(`${window.API_URL}/bookings/read/${id}`);
 }
 
 export async function apiUpdateBooking(id, payload) {

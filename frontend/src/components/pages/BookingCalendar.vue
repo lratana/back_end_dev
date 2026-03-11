@@ -18,34 +18,14 @@
 
                         <div class="card-tools d-flex align-items-center" style="gap:8px;">
                             <div class="calendar-legend mr-2">
-                                <div class="legend-item">
-                                    <span class="legend-color pending"></span>
-                                    Pending
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color approved"></span>
-                                    Approved
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color rejected"></span>
-                                    Rejected
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color cancel_requested"></span>
-                                    Cancel Request
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color cancelled"></span>
-                                    Cancelled
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color completed"></span>
-                                    Completed
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color expired"></span>
-                                    Expired
-                                </div>
+                                <div class="legend-item"><span class="legend-color pending"></span>Pending</div>
+                                <div class="legend-item"><span class="legend-color approved"></span>Approved</div>
+                                <div class="legend-item"><span class="legend-color rejected"></span>Rejected</div>
+                                <div class="legend-item"><span class="legend-color cancel_requested"></span>Cancel
+                                    Request</div>
+                                <div class="legend-item"><span class="legend-color cancelled"></span>Cancelled</div>
+                                <div class="legend-item"><span class="legend-color completed"></span>Completed</div>
+                                <div class="legend-item"><span class="legend-color expired"></span>Expired</div>
                             </div>
 
                             <button class="btn btn-sm btn-outline-primary" :disabled="loading" @click="refetch">
@@ -65,24 +45,17 @@
         </section>
     </div>
 
-    <!-- Create Booking Modal -->
     <div class="modal fade" ref="createModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary">
-                    <h5 class="modal-title">
-                        <i class="fas fa-plus-circle mr-2"></i>
-                        Create Booking
-                    </h5>
-                    <button type="button" class="close text-white" @click="hideCreateModal">
-                        <span>&times;</span>
-                    </button>
+                    <h5 class="modal-title"><i class="fas fa-plus-circle mr-2"></i>Create Booking</h5>
+                    <button type="button" class="close text-white"
+                        @click="hideCreateModal"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
-                    <div v-if="formError" class="alert alert-danger">
-                        {{ formError }}
-                    </div>
+                    <div v-if="formError" class="alert alert-danger">{{ formError }}</div>
 
                     <div class="form-row">
                         <div class="form-group col-md-6">
@@ -129,20 +102,14 @@
                             <label>Recurrence Days</label>
                             <input v-model="bookingForm.recurrence_days" type="text" class="form-control"
                                 placeholder="mon,tue or wed,fri" />
-                            <small class="text-muted">
-                                Use day codes: mon, tue, wed, thu, fri, sat, sun
-                            </small>
+                            <small class="text-muted">Use: mon, tue, wed, thu, fri, sat, sun</small>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-footer justify-content-between">
-                    <button class="btn btn-default" type="button" @click="hideCreateModal">
-                        <i class="fas fa-times mr-1"></i> Close
-                    </button>
-
+                    <button class="btn btn-default" type="button" @click="hideCreateModal">Close</button>
                     <button class="btn btn-primary" type="button" :disabled="saving" @click="submitCreateBooking">
-                        <i class="fas fa-save mr-1" :class="{ 'fa-spin': saving }"></i>
                         {{ saving ? 'Saving...' : 'Create Booking' }}
                     </button>
                 </div>
@@ -150,18 +117,13 @@
         </div>
     </div>
 
-    <!-- Booking Detail Modal -->
     <div class="modal fade" ref="detailModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info">
-                    <h5 class="modal-title">
-                        <i class="fas fa-info-circle mr-2"></i>
-                        Booking Detail
-                    </h5>
-                    <button type="button" class="close text-white" @click="hideDetailModal">
-                        <span>&times;</span>
-                    </button>
+                    <h5 class="modal-title"><i class="fas fa-info-circle mr-2"></i>Booking Detail</h5>
+                    <button type="button" class="close text-white"
+                        @click="hideDetailModal"><span>&times;</span></button>
                 </div>
 
                 <div class="modal-body">
@@ -173,7 +135,7 @@
                         <table class="table table-sm table-bordered">
                             <tbody>
                                 <tr>
-                                    <th style="width: 170px;">Room</th>
+                                    <th style="width:170px;">Room</th>
                                     <td>{{ selected.room?.name ?? ("Room #" + selected.room_id) }}</td>
                                 </tr>
                                 <tr>
@@ -187,12 +149,10 @@
                                 <tr>
                                     <th>Status</th>
                                     <td>
-                                        <span class="badge" :class="statusBadge(selected.status)">
-                                            {{ selected.status }}
-                                        </span>
-                                        <span v-if="isPastBooking(selected)" class="badge badge-dark ml-2">
-                                            expired
-                                        </span>
+                                        <span class="badge" :class="statusBadge(selected.status)">{{ selected.status
+                                            }}</span>
+                                        <span v-if="isPastBooking(selected)"
+                                            class="badge badge-dark ml-2">expired</span>
                                     </td>
                                 </tr>
                                 <tr v-if="selected.user?.name">
@@ -219,52 +179,25 @@
                         </table>
                     </div>
 
-                    <div v-else class="text-muted">
-                        No data
-                    </div>
+                    <div v-else class="text-muted">No data</div>
                 </div>
 
                 <div class="modal-footer justify-content-between">
-                    <button class="btn btn-default" type="button" @click="hideDetailModal">
-                        <i class="fas fa-times mr-1"></i> Close
-                    </button>
+                    <button class="btn btn-default" type="button" @click="hideDetailModal">Close</button>
 
-                    <div class="d-flex" style="gap: 8px; flex-wrap: wrap;">
+                    <div class="d-flex" style="gap:8px; flex-wrap:wrap;">
                         <button v-if="selected && canRequestCancel(selected)" class="btn btn-warning" type="button"
-                            :disabled="actionLoading" @click="onRequestCancel(selected)">
-                            <i class="fas fa-paper-plane mr-1" :class="{ 'fa-spin': actionLoading }"></i>
-                            Request Cancel
-                        </button>
-
+                            :disabled="actionLoading" @click="onRequestCancel(selected)">Request Cancel</button>
                         <button v-if="selected && canApprove(selected)" class="btn btn-success" type="button"
-                            :disabled="actionLoading" @click="onApproveBooking(selected)">
-                            <i class="fas fa-check mr-1" :class="{ 'fa-spin': actionLoading }"></i>
-                            Approve
-                        </button>
-
+                            :disabled="actionLoading" @click="onApproveBooking(selected)">Approve</button>
                         <button v-if="selected && canReject(selected)" class="btn btn-danger" type="button"
-                            :disabled="actionLoading" @click="onRejectBooking(selected)">
-                            <i class="fas fa-times-circle mr-1" :class="{ 'fa-spin': actionLoading }"></i>
-                            Reject
-                        </button>
-
+                            :disabled="actionLoading" @click="onRejectBooking(selected)">Reject</button>
                         <button v-if="selected && canConfirmCancel(selected)" class="btn btn-warning" type="button"
-                            :disabled="actionLoading" @click="onConfirmCancel(selected)">
-                            <i class="fas fa-ban mr-1" :class="{ 'fa-spin': actionLoading }"></i>
-                            Confirm Cancel
-                        </button>
-
+                            :disabled="actionLoading" @click="onConfirmCancel(selected)">Confirm Cancel</button>
                         <button v-if="selected && canAdminDirectCancel(selected)" class="btn btn-warning" type="button"
-                            :disabled="actionLoading" @click="onAdminDirectCancel(selected)">
-                            <i class="fas fa-ban mr-1" :class="{ 'fa-spin': actionLoading }"></i>
-                            Cancel
-                        </button>
-
+                            :disabled="actionLoading" @click="onAdminDirectCancel(selected)">Cancel</button>
                         <button v-if="selected && canDelete(selected)" class="btn btn-outline-danger" type="button"
-                            :disabled="actionLoading" @click="onDeleteBooking(selected)">
-                            <i class="fas fa-trash mr-1" :class="{ 'fa-spin': actionLoading }"></i>
-                            Delete
-                        </button>
+                            :disabled="actionLoading" @click="onDeleteBooking(selected)">Delete</button>
                     </div>
                 </div>
             </div>
@@ -278,7 +211,6 @@ import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-
 import {
     apiGetCalendar,
     apiCreateBooking,
@@ -291,7 +223,6 @@ import {
     apiAdminCancelBooking,
     apiDeleteBooking,
 } from "@func/api/calendar";
-
 import { apiGetRooms } from "@func/api/room";
 
 const calendarRef = ref(null);
@@ -305,7 +236,6 @@ const detailLoading = ref(false);
 
 const error = ref("");
 const formError = ref("");
-
 const selected = ref(null);
 const rooms = ref([]);
 const lastRange = ref({ start: "", end: "" });
@@ -327,66 +257,39 @@ const currentUser = computed(() => {
         return null;
     }
 });
-
 const isAdmin = computed(() => currentUser.value?.level === "admin");
 
 function showCreateModal() {
-    if (!window.$ || !createModal.value) return;
-    window.$(createModal.value).modal("show");
+    if (window.$ && createModal.value) window.$(createModal.value).modal("show");
 }
-
 function hideCreateModal() {
-    if (!window.$ || !createModal.value) return;
+    if (window.$ && createModal.value) window.$(createModal.value).modal("hide");
     resetForm();
-    window.$(createModal.value).modal("hide");
 }
-
 function showDetailModal() {
-    if (!window.$ || !detailModal.value) return;
-    window.$(detailModal.value).modal("show");
+    if (window.$ && detailModal.value) window.$(detailModal.value).modal("show");
 }
-
 function hideDetailModal() {
-    if (!window.$ || !detailModal.value) return;
+    if (window.$ && detailModal.value) window.$(detailModal.value).modal("hide");
     selected.value = null;
-    window.$(detailModal.value).modal("hide");
 }
 
 function normalizeDt(dt) {
-    if (!dt) return null;
-    return String(dt).replace(" ", "T");
+    return dt ? String(dt).replace(" ", "T") : null;
 }
-
 function toMysqlDatetime(value) {
-    if (!value) return null;
-
-    if (value instanceof Date) {
-        const yyyy = value.getFullYear();
-        const mm = String(value.getMonth() + 1).padStart(2, "0");
-        const dd = String(value.getDate()).padStart(2, "0");
-        const hh = String(value.getHours()).padStart(2, "0");
-        const ii = String(value.getMinutes()).padStart(2, "0");
-        const ss = String(value.getSeconds()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd} ${hh}:${ii}:${ss}`;
-    }
-
-    return String(value).replace("T", " ");
+    return value ? String(value).replace("T", " ") : null;
 }
-
 function fmt(dt) {
     if (!dt) return "-";
     const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return String(dt);
-    return d.toLocaleString();
+    return Number.isNaN(d.getTime()) ? String(dt) : d.toLocaleString();
 }
-
 function fmtDateOnly(dt) {
     if (!dt) return "-";
     const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return String(dt);
-    return d.toLocaleDateString();
+    return Number.isNaN(d.getTime()) ? String(dt) : d.toLocaleDateString();
 }
-
 function formatForInput(dt) {
     if (!dt) return "";
     const d = new Date(normalizeDt(dt));
@@ -398,54 +301,31 @@ function formatForInput(dt) {
     const ii = String(d.getMinutes()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
 }
-
 function parseRecurrenceDays(value) {
     if (!value) return null;
-
-    if (Array.isArray(value)) {
-        return value
-            .map((x) => String(x).trim().toLowerCase())
-            .filter(Boolean);
-    }
-
-    return String(value)
-        .split(",")
-        .map((x) => x.trim().toLowerCase())
-        .filter(Boolean);
+    return String(value).split(",").map(x => x.trim().toLowerCase()).filter(Boolean).join(",");
 }
-
 function formatRecurrenceDays(value) {
     if (!value) return "-";
     if (Array.isArray(value)) return value.join(", ");
-    return value;
+    return String(value);
 }
-
 function isPastBooking(booking) {
     if (!booking?.end_datetime) return false;
     const end = new Date(normalizeDt(booking.end_datetime));
-    if (Number.isNaN(end.getTime())) return false;
-    return end.getTime() < Date.now();
+    return !Number.isNaN(end.getTime()) && end.getTime() < Date.now();
 }
-
 function statusBadge(status) {
     switch (status) {
-        case "pending":
-            return "badge-warning";
-        case "approved":
-            return "badge-success";
-        case "rejected":
-            return "badge-danger";
-        case "cancel_requested":
-            return "badge-info";
-        case "cancelled":
-            return "badge-secondary";
-        case "completed":
-            return "badge-primary";
-        default:
-            return "badge-dark";
+        case "pending": return "badge-warning";
+        case "approved": return "badge-success";
+        case "rejected": return "badge-danger";
+        case "cancel_requested": return "badge-info";
+        case "cancelled": return "badge-secondary";
+        case "completed": return "badge-primary";
+        default: return "badge-dark";
     }
 }
-
 function statusClass(status) {
     if (status === "pending") return "fc-event-pending";
     if (status === "approved") return "fc-event-approved";
@@ -457,38 +337,22 @@ function statusClass(status) {
 }
 
 function canRequestCancel(booking) {
-    if (!booking || isAdmin.value) return false;
-    if (isPastBooking(booking)) return false;
-    return ["pending", "approved"].includes(booking.status);
+    return !!booking && !isAdmin.value && !isPastBooking(booking) && ["pending", "approved"].includes(booking.status);
 }
-
 function canApprove(booking) {
-    if (!booking || !isAdmin.value) return false;
-    if (isPastBooking(booking)) return false;
-    return booking.status === "pending";
+    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending";
 }
-
 function canReject(booking) {
-    if (!booking || !isAdmin.value) return false;
-    if (isPastBooking(booking)) return false;
-    return booking.status === "pending";
+    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending";
 }
-
 function canConfirmCancel(booking) {
-    if (!booking || !isAdmin.value) return false;
-    if (isPastBooking(booking)) return false;
-    return booking.status === "cancel_requested";
+    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "cancel_requested";
 }
-
 function canAdminDirectCancel(booking) {
-    if (!booking || !isAdmin.value) return false;
-    if (isPastBooking(booking)) return false;
-    return ["pending", "approved"].includes(booking.status);
+    return !!booking && isAdmin.value && !isPastBooking(booking) && ["pending", "approved"].includes(booking.status);
 }
-
 function canDelete(booking) {
-    if (!booking || !isAdmin.value) return false;
-    return true;
+    return !!booking && isAdmin.value;
 }
 
 async function loadRooms() {
@@ -496,10 +360,9 @@ async function loadRooms() {
         const res = await apiGetRooms({ per_page: 100 });
         rooms.value = res?.data?.data ?? res?.data ?? [];
     } catch (e) {
-        console.error("Failed to load rooms", e);
+        console.error(e);
     }
 }
-
 function resetForm() {
     bookingForm.room_id = "";
     bookingForm.start_datetime = "";
@@ -515,9 +378,7 @@ async function fetchEvents(info, successCallback, failureCallback) {
     const startStr = info.startStr;
     const endStr = info.endStr;
 
-    if (lastRange.value.start === startStr && lastRange.value.end === endStr) {
-        return;
-    }
+    if (lastRange.value.start === startStr && lastRange.value.end === endStr) return;
 
     lastRange.value = { start: startStr, end: endStr };
     loading.value = true;
@@ -527,20 +388,17 @@ async function fetchEvents(info, successCallback, failureCallback) {
         const res = await apiGetCalendar({ start: startStr, end: endStr });
         const bookings = res.data ?? [];
 
-        const events = bookings.map((b) => ({
-            id: String(b.id),
-            title: b.room?.name ?? `Room ${b.room_id}`,
-            start: normalizeDt(b.start_datetime),
-            end: normalizeDt(b.end_datetime),
-            editable: !isPastBooking(b) && (isAdmin.value ? true : b.status === "pending"),
-            extendedProps: { booking: b },
-            classNames: [
-                statusClass(b.status),
-                isPastBooking(b) ? "fc-event-expired" : "",
-            ].filter(Boolean),
-        }));
-
-        successCallback(events);
+        successCallback(
+            bookings.map((b) => ({
+                id: String(b.id),
+                title: b.room?.name ?? `Room ${b.room_id}`,
+                start: normalizeDt(b.start_datetime),
+                end: normalizeDt(b.end_datetime),
+                editable: !isPastBooking(b) && (isAdmin.value || b.status === "pending"),
+                extendedProps: { booking: b },
+                classNames: [statusClass(b.status), isPastBooking(b) ? "fc-event-expired" : ""].filter(Boolean),
+            }))
+        );
     } catch (e) {
         error.value = e?.response?.data?.message || e?.message || "Failed to load calendar";
         failureCallback(e);
@@ -557,68 +415,43 @@ function refetch() {
 }
 
 async function onDateSelect(selectInfo) {
-    const now = new Date();
-
-    if (selectInfo.start < now) {
+    if (selectInfo.start < new Date()) {
         error.value = "You cannot create a booking in the past.";
         return;
     }
-
     resetForm();
     await loadRooms();
-
     bookingForm.start_datetime = formatForInput(selectInfo.start);
     bookingForm.end_datetime = formatForInput(selectInfo.end);
-
     showCreateModal();
 }
 
 async function submitCreateBooking() {
     formError.value = "";
 
-    if (!bookingForm.room_id) {
-        formError.value = "Please select room";
-        return;
-    }
-
-    if (!bookingForm.start_datetime || !bookingForm.end_datetime) {
-        formError.value = "Please select start and end datetime";
-        return;
-    }
+    if (!bookingForm.room_id) return formError.value = "Please select room";
+    if (!bookingForm.start_datetime || !bookingForm.end_datetime) return formError.value = "Please select start and end datetime";
 
     const start = new Date(normalizeDt(bookingForm.start_datetime));
     const end = new Date(normalizeDt(bookingForm.end_datetime));
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        formError.value = "Invalid start or end datetime";
-        return;
-    }
-
-    if (end <= start) {
-        formError.value = "End datetime must be after start datetime";
-        return;
-    }
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return formError.value = "Invalid datetime";
+    if (end <= start) return formError.value = "End datetime must be after start datetime";
 
     const recurrenceDays = parseRecurrenceDays(bookingForm.recurrence_days);
     const recurrencePeriod = bookingForm.recurrence_period ? Number(bookingForm.recurrence_period) : null;
 
-    if (bookingForm.recurrence_type === "weekly" && (!recurrenceDays || recurrenceDays.length === 0)) {
-        formError.value = "Weekly recurrence requires at least one recurrence day.";
-        return;
+    if (bookingForm.recurrence_type === "weekly" && !recurrenceDays) {
+        return formError.value = "Weekly recurrence requires recurrence days.";
     }
-
     if (bookingForm.recurrence_type !== "none" && !recurrencePeriod) {
-        formError.value = "Recurrence period is required for recurring bookings.";
-        return;
+        return formError.value = "Recurrence period is required.";
     }
-
     if (bookingForm.recurrence_type !== "none" && !bookingForm.recurrence_until) {
-        formError.value = "Recurrence until is required for recurring bookings.";
-        return;
+        return formError.value = "Recurrence until is required.";
     }
 
     saving.value = true;
-
     try {
         await apiCreateBooking({
             room_id: Number(bookingForm.room_id),
@@ -629,9 +462,7 @@ async function submitCreateBooking() {
             recurrence_period: recurrencePeriod,
             recurrence_until: bookingForm.recurrence_until || null,
         });
-
         hideCreateModal();
-        resetForm();
         refetch();
     } catch (e) {
         formError.value = e?.response?.data?.message || e?.message || "Failed to create booking";
@@ -642,14 +473,8 @@ async function submitCreateBooking() {
 
 function eventClick(info) {
     const booking = info.event.extendedProps?.booking ?? null;
-
     if (!booking) return;
-
-    if (isPastBooking(booking)) {
-        error.value = "This booking has already expired and cannot be opened.";
-        return;
-    }
-
+    if (isPastBooking(booking)) return error.value = "This booking has already expired and cannot be opened.";
     selected.value = booking;
     detailLoading.value = false;
     showDetailModal();
@@ -657,21 +482,14 @@ function eventClick(info) {
 
 async function eventDrop(info) {
     const booking = info.event.extendedProps?.booking;
-    if (!booking?.id) {
-        info.revert();
-        return;
-    }
-
+    if (!booking?.id) return info.revert();
     if (isPastBooking(booking)) {
         info.revert();
-        error.value = "Past bookings cannot be moved.";
-        return;
+        return error.value = "Past bookings cannot be moved.";
     }
-
     if (!isAdmin.value && booking.status !== "pending") {
         info.revert();
-        error.value = "You can only move pending bookings";
-        return;
+        return error.value = "You can only move pending bookings";
     }
 
     try {
@@ -684,7 +502,6 @@ async function eventDrop(info) {
             recurrence_period: booking.recurrence_period ?? null,
             recurrence_until: booking.recurrence_until ?? null,
         });
-
         await reloadBookingAfterAction(booking.id);
     } catch (e) {
         info.revert();
@@ -694,21 +511,14 @@ async function eventDrop(info) {
 
 async function eventResize(info) {
     const booking = info.event.extendedProps?.booking;
-    if (!booking?.id) {
-        info.revert();
-        return;
-    }
-
+    if (!booking?.id) return info.revert();
     if (isPastBooking(booking)) {
         info.revert();
-        error.value = "Past bookings cannot be resized.";
-        return;
+        return error.value = "Past bookings cannot be resized.";
     }
-
     if (!isAdmin.value && booking.status !== "pending") {
         info.revert();
-        error.value = "You can only resize pending bookings";
-        return;
+        return error.value = "You can only resize pending bookings";
     }
 
     try {
@@ -721,7 +531,6 @@ async function eventResize(info) {
             recurrence_period: booking.recurrence_period ?? null,
             recurrence_until: booking.recurrence_until ?? null,
         });
-
         await reloadBookingAfterAction(booking.id);
     } catch (e) {
         info.revert();
@@ -736,23 +545,12 @@ async function reloadBookingAfterAction(id) {
     } catch (e) {
         console.error(e);
     }
-
     refetch();
 }
 
 async function onRequestCancel(booking) {
-    if (!booking?.id) return;
-    if (isPastBooking(booking)) {
-        error.value = "Past bookings cannot request cancellation.";
-        return;
-    }
-
-    if (!window.confirm("Do you want to request cancellation for this booking?")) {
-        return;
-    }
-
+    if (!booking?.id || !window.confirm("Do you want to request cancellation for this booking?")) return;
     actionLoading.value = true;
-
     try {
         await apiRequestCancelBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
@@ -762,20 +560,9 @@ async function onRequestCancel(booking) {
         actionLoading.value = false;
     }
 }
-
 async function onApproveBooking(booking) {
-    if (!booking?.id) return;
-    if (isPastBooking(booking)) {
-        error.value = "Past bookings cannot be approved.";
-        return;
-    }
-
-    if (!window.confirm("Approve this booking?")) {
-        return;
-    }
-
+    if (!booking?.id || !window.confirm("Approve this booking?")) return;
     actionLoading.value = true;
-
     try {
         await apiApproveBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
@@ -785,20 +572,9 @@ async function onApproveBooking(booking) {
         actionLoading.value = false;
     }
 }
-
 async function onRejectBooking(booking) {
-    if (!booking?.id) return;
-    if (isPastBooking(booking)) {
-        error.value = "Past bookings cannot be rejected.";
-        return;
-    }
-
-    if (!window.confirm("Reject this booking?")) {
-        return;
-    }
-
+    if (!booking?.id || !window.confirm("Reject this booking?")) return;
     actionLoading.value = true;
-
     try {
         await apiRejectBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
@@ -808,20 +584,9 @@ async function onRejectBooking(booking) {
         actionLoading.value = false;
     }
 }
-
 async function onConfirmCancel(booking) {
-    if (!booking?.id) return;
-    if (isPastBooking(booking)) {
-        error.value = "Past bookings cannot confirm cancellation.";
-        return;
-    }
-
-    if (!window.confirm("Confirm cancel for this booking?")) {
-        return;
-    }
-
+    if (!booking?.id || !window.confirm("Confirm cancel for this booking?")) return;
     actionLoading.value = true;
-
     try {
         await apiConfirmCancelBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
@@ -831,20 +596,9 @@ async function onConfirmCancel(booking) {
         actionLoading.value = false;
     }
 }
-
 async function onAdminDirectCancel(booking) {
-    if (!booking?.id) return;
-    if (isPastBooking(booking)) {
-        error.value = "Past bookings cannot be cancelled directly.";
-        return;
-    }
-
-    if (!window.confirm("Cancel this booking directly as admin?")) {
-        return;
-    }
-
+    if (!booking?.id || !window.confirm("Cancel this booking directly as admin?")) return;
     actionLoading.value = true;
-
     try {
         await apiAdminCancelBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
@@ -854,16 +608,9 @@ async function onAdminDirectCancel(booking) {
         actionLoading.value = false;
     }
 }
-
 async function onDeleteBooking(booking) {
-    if (!booking?.id) return;
-
-    if (!window.confirm("Delete this booking permanently?")) {
-        return;
-    }
-
+    if (!booking?.id || !window.confirm("Delete this booking permanently?")) return;
     actionLoading.value = true;
-
     try {
         await apiDeleteBooking(booking.id);
         hideDetailModal();
@@ -897,11 +644,7 @@ const calendarOptions = {
     eventResizableFromStart: true,
     dayMaxEvents: true,
     eventDisplay: "block",
-    eventTimeFormat: {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    },
+    eventTimeFormat: { hour: "2-digit", minute: "2-digit", hour12: false },
     events: fetchEvents,
     select: onDateSelect,
     eventClick,
@@ -967,35 +710,17 @@ const calendarOptions = {
     background: #343a40;
 }
 
-.fc .fc-toolbar-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #343a40;
-}
-
-.fc .fc-button {
-    text-transform: capitalize;
-}
-
-.fc .fc-col-header-cell-cushion,
-.fc .fc-daygrid-day-number,
-.fc .fc-timegrid-axis-cushion,
-.fc .fc-timegrid-slot-label-cushion {
-    color: #495057;
-    text-decoration: none;
-}
-
-.fc .fc-day-today {
-    background: rgba(0, 123, 255, 0.08) !important;
-}
-
 .fc .fc-event {
     border: 0 !important;
     border-radius: 8px !important;
     padding: 2px 6px !important;
     font-size: 12px !important;
     font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+}
+
+.fc .fc-day-today {
+    background: rgba(0, 123, 255, .08) !important;
 }
 
 .fc-event-pending {
@@ -1022,7 +747,7 @@ const calendarOptions = {
     background: #6c757d !important;
     color: #fff !important;
     text-decoration: line-through;
-    opacity: 0.9;
+    opacity: .9;
 }
 
 .fc-event-completed {
@@ -1036,7 +761,7 @@ const calendarOptions = {
 }
 
 .fc-event-expired {
-    opacity: 0.55 !important;
+    opacity: .55 !important;
     cursor: not-allowed !important;
     filter: grayscale(20%);
 }
@@ -1045,15 +770,4 @@ const calendarOptions = {
 .fc-event-expired .fc-event-time {
     text-decoration: line-through;
 }
-
-.modal-header.bg-primary,
-.modal-header.bg-info {
-    border-bottom: 0;
-}
-
-.table th {
-    background: #f8f9fa;
-}
 </style>
-please help me check all code above and be honest if there are any errors or anything should be improved please fix for
-me as well.
