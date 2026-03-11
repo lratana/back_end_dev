@@ -214,7 +214,6 @@
                             </tbody>
                         </table>
                     </div>
-
                     <div v-else class="text-muted">No data</div>
                 </div>
 
