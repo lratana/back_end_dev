@@ -196,7 +196,7 @@ class RoomController extends Controller
             ->with([
                 'department',
                 'bookings' => function ($query) use ($now) {
-                    $query->whereIn('status', ['pending', 'approved'])
+                    $query->whereIn('status', ['approved'])
                         ->where(function ($q) use ($now) {
                             $q->where(function ($qq) use ($now) {
                                 $qq->where('start_datetime', '<=', $now)
