@@ -14,7 +14,7 @@ import Rooms from '@/components/pages/Room.vue';
 import Department from '@/components/pages/Department.vue';
 import Calendar from '@/components/pages/Calendar.vue';
 import BookingCalendar from '@/components/pages/BookingCalendar.vue';
-
+import RoomStatusBoard from '@/components/pages/RoomStatusBoard.vue';
 
 import { createRouter, createWebHistory } from 'vue-router'
 import Navbar from '@com/includes/Navbar.vue';
@@ -176,6 +176,12 @@ const router = createRouter({
       components: { default: BookingCalendar, ...includes },
       meta: { guard: true },
     },
+    {
+      path: "/room-status-board",
+      name: "roomStatusBoard",
+      components: { default: RoomStatusBoard, ...includes },
+      meta: { guard: true },
+    }
 
   ],
 })

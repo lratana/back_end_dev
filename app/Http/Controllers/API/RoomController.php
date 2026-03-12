@@ -188,6 +188,114 @@ class RoomController extends Controller
         ]);
     }
 
+    public function statusBoard(Request $request)
+    {
+        $now = now();
+
+        $rooms = Room::query()
+            ->with([
+                'department',
+                'bookings' => function ($query) use ($now) {
+                    $query->whereIn('status', ['pending', 'approved'])
+                        ->where(function ($q) use ($now) {
+                            $q->where(function ($qq) use ($now) {
+                                $qq->where('start_datetime', '<=', $now)
+                                    ->where('end_datetime', '>', $now);
+                            })
+                                ->orWhere('start_datetime', '>', $now);
+                        })
+                        ->orderBy('start_datetime');
+                }
+            ])
+            ->orderBy('name')
+            ->get();
+
+        $items = $rooms->map(function ($room) use ($now) {
+            $currentBooking = $room->bookings->first(function ($booking) use ($now) {
+                return $booking->start_datetime <= $now && $booking->end_datetime > $now;
+            });
+
+            $nextBooking = $room->bookings->first(function ($booking) use ($now) {
+                return $booking->start_datetime > $now;
+            });
+
+            if ($currentBooking) {
+                return [
+                    'room_id' => $room->id,
+                    'room_name' => $room->name,
+                    'department' => $room->department?->name,
+                    'location' => $room->location,
+                    'capacity' => $room->capacity,
+
+                    'status' => 'occupied',
+
+                    'booking_id' => $currentBooking->id,
+                    'start_datetime' => optional($currentBooking->start_datetime)->toDateTimeString(),
+                    'end_datetime' => optional($currentBooking->end_datetime)->toDateTimeString(),
+
+                    'meeting_title' => $currentBooking->meeting_title,
+                    'meeting_chairman' => $currentBooking->meeting_chairman,
+
+                    'snack_required' => (bool) $currentBooking->snack_required,
+                    'snack_note' => $currentBooking->snack_note,
+
+                    'countdown_seconds' => $currentBooking->end_datetime
+                        ? max(0, $now->diffInSeconds($currentBooking->end_datetime, false))
+                        : null,
+                ];
+            }
+
+            if ($nextBooking) {
+                return [
+                    'room_id' => $room->id,
+                    'room_name' => $room->name,
+                    'department' => $room->department?->name,
+                    'location' => $room->location,
+                    'capacity' => $room->capacity,
+
+                    'status' => 'upcoming',
+
+                    'booking_id' => $nextBooking->id,
+                    'start_datetime' => optional($nextBooking->start_datetime)->toDateTimeString(),
+                    'end_datetime' => optional($nextBooking->end_datetime)->toDateTimeString(),
+
+                    'meeting_title' => $nextBooking->meeting_title,
+                    'meeting_chairman' => $nextBooking->meeting_chairman,
+
+                    'snack_required' => (bool) $nextBooking->snack_required,
+                    'snack_note' => $nextBooking->snack_note,
+
+                    'countdown_seconds' => $nextBooking->start_datetime
+                        ? max(0, $now->diffInSeconds($nextBooking->start_datetime, false))
+                        : null,
+                ];
+            }
+
+            return [
+                'room_id' => $room->id,
+                'room_name' => $room->name,
+                'department' => $room->department?->name,
+                'location' => $room->location,
+                'capacity' => $room->capacity,
+
+                'status' => 'available',
+
+                'booking_id' => null,
+                'start_datetime' => null,
+                'end_datetime' => null,
+
+                'meeting_title' => null,
+                'meeting_chairman' => null,
+
+                'snack_required' => false,
+                'snack_note' => null,
+
+                'countdown_seconds' => null,
+            ];
+        })->values();
+
+        return response()->json($items);
+    }
     public function deleteImage(Room $room, RoomImage $image)
     {
         abort_unless($image->room_id === $room->id, 404);

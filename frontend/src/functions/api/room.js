@@ -25,3 +25,7 @@ export async function apiDeleteRoom(id) {
 export async function apiDeleteRoomImage(roomId, imageId) {
     return await window.axios.delete(`${window.API_URL}/rooms/delete-image/${roomId}/${imageId}`);
 }
+
+export async function apiGetRoomStatusBoard() {
+    return await window.axios.get(`${window.API_URL}/rooms/status-board`);
+}

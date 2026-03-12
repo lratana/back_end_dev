@@ -19,6 +19,7 @@
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
                     data-accordion="false">
+                    <li class="nav-header">MAIN</li>
                     <li class="nav-item">
                         <router-link :to="{ name: 'dashboard' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-tachometer-alt"></i>
@@ -26,6 +27,7 @@
                         </router-link>
                     </li>
 
+                    <li class="nav-header">MEETING MANAGEMENT</li>
                     <li class="nav-item">
                         <router-link :to="{ name: 'bookings' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-calendar-check"></i>
@@ -34,18 +36,30 @@
                     </li>
                     <li class="nav-item">
                         <router-link :to="{ name: 'bookingscalendar' }" class="nav-link" active-class="active">
-                            <i class="nav-icon fas fa-calendar-check"></i>
-                            <p>BookingsCalendar</p>
+                            <i class="nav-icon fas fa-calendar-alt"></i>
+                            <p>Bookings Calendar</p>
                         </router-link>
                     </li>
-
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'calendar' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-calendar-week"></i>
+                            <p>Calendar</p>
+                        </router-link>
+                    </li>
                     <li class="nav-item">
                         <router-link :to="{ name: 'rooms' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-door-open"></i>
                             <p>Rooms</p>
                         </router-link>
                     </li>
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'roomStatusBoard' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-tv"></i>
+                            <p>Room Status Board</p>
+                        </router-link>
+                    </li>
 
+                    <li v-if="isAdmin" class="nav-header">ORGANIZATION</li>
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'departments' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-building"></i>
@@ -53,46 +67,19 @@
                         </router-link>
                     </li>
 
-                    <li class="nav-item">
-                        <router-link :to="{ name: 'calendar' }" class="nav-link" active-class="active">
-                            <i class="nav-icon fas fa-calendar-alt"></i>
-                            <p>Calendar</p>
-                        </router-link>
-                    </li>
-                    <li v-if="isAdmin" class="nav-header">Systems</li>
-                    <li v-if="isAdmin" class="nav-item">
-                        <router-link :to="{ name: 'backups' }" class="nav-link" active-class="active">
-                            <i class="nav-icon fas fa-database"></i>
-                            <p>Backups</p>
-                        </router-link>
-                    </li>
+                    <li v-if="isAdmin" class="nav-header">SYSTEM</li>
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'users' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-users"></i>
                             <p>Users</p>
                         </router-link>
                     </li>
-
-                    <!-- <li class="nav-item">
-                        <router-link :to="{ name: 'profile' }" class="nav-link" active-class="active">
-                            <i class="far fa-user nav-icon"></i>
-                            <p>Profile</p>
+                    <li v-if="isAdmin" class="nav-item">
+                        <router-link :to="{ name: 'backups' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-database"></i>
+                            <p>Backups</p>
                         </router-link>
                     </li>
-
-                    <li class="nav-item">
-                        <router-link :to="{ name: 'change-password' }" class="nav-link" active-class="active">
-                            <i class="fas fa-key nav-icon"></i>
-                            <p>Change Password</p>
-                        </router-link>
-                    </li>
-
-                    <li class="nav-item">
-                        <router-link :to="{ name: 'preferences' }" class="nav-link" active-class="active">
-                            <i class="fas fa-sliders-h nav-icon"></i>
-                            <p>Preferences</p>
-                        </router-link>
-                    </li> -->
 
 
                 </ul>

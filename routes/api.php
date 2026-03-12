@@ -148,5 +148,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/read/{department}', [DepartmentController::class, 'show']);
     });
 
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/rooms/status-board', [RoomController::class, 'statusBoard']);
+    });
     Route::get('/dashboard', [BookingController::class, 'dashboard']);
 });
