@@ -125,6 +125,18 @@
                             </div>
 
                             <div class="col-md-6 form-group">
+                                <label>Meeting Title</label>
+                                <input type="text" class="form-control" v-model="bookingObject.meeting_title"
+                                    placeholder="Meeting title" />
+                            </div>
+
+                            <div class="col-md-6 form-group">
+                                <label>Meeting Chairman</label>
+                                <input type="text" class="form-control" v-model="bookingObject.meeting_chairman"
+                                    placeholder="Chairman name" />
+                            </div>
+
+                            <div class="col-md-6 form-group">
                                 <label>Recurrence period (optional)</label>
                                 <input type="number" min="1" class="form-control"
                                     v-model="bookingObject.recurrence_period" />
@@ -139,7 +151,23 @@
                                 <label>Recurrence days (optional)</label>
                                 <input type="text" class="form-control" v-model="bookingObject.recurrence_days"
                                     placeholder="mon,tue or wed,fri" />
-                                <small class="text-muted">Use day codes: mon, tue, wed, thu, fri, sat, sun</small>
+                                <small class="text-muted">
+                                    Use day codes: mon, tue, wed, thu, fri, sat, sun
+                                </small>
+                            </div>
+
+                            <div class="col-md-4 form-group">
+                                <label>Snack Required</label>
+                                <select class="form-control" v-model="bookingObject.snack_required">
+                                    <option :value="false">No</option>
+                                    <option :value="true">Yes</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-8 form-group">
+                                <label>Snack Note</label>
+                                <input type="text" class="form-control" v-model="bookingObject.snack_note"
+                                    placeholder="Snack detail" :disabled="!bookingObject.snack_required" />
                             </div>
 
                             <div class="col-12">
@@ -210,6 +238,22 @@
                                         expired
                                     </span>
                                 </td>
+                            </tr>
+                            <tr>
+                                <th>Meeting Title</th>
+                                <td>{{ selectedBooking.meeting_title || "-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Meeting Chairman</th>
+                                <td>{{ selectedBooking.meeting_chairman || "-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Snack Required</th>
+                                <td>{{ selectedBooking.snack_required ? "Yes" : "No" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Snack Note</th>
+                                <td>{{ selectedBooking.snack_note || "-" }}</td>
                             </tr>
                             <tr>
                                 <th>Recurrence Type</th>
@@ -328,7 +372,6 @@ const filters = reactive({
 
 const currentUser = computed(() => store.state.user || null);
 const isAdmin = computed(() => currentUser.value?.level === "admin");
-
 const roomOptions = computed(() => rooms.value ?? []);
 
 const filteredBookings = computed(() => {
@@ -400,7 +443,7 @@ function isPastBooking(booking) {
 function formatRecurrenceDays(value) {
     if (!value) return "-";
     if (Array.isArray(value)) return value.join(", ");
-    return value;
+    return String(value);
 }
 
 function statusBadge(status) {
@@ -431,6 +474,10 @@ const bookingObject = reactive({
     recurrence_days: "",
     recurrence_period: "",
     recurrence_until: "",
+    meeting_title: "",
+    meeting_chairman: "",
+    snack_required: false,
+    snack_note: "",
     status: "",
 });
 
@@ -449,6 +496,10 @@ const defaultBookingObject = {
     recurrence_days: "",
     recurrence_period: "",
     recurrence_until: "",
+    meeting_title: "",
+    meeting_chairman: "",
+    snack_required: false,
+    snack_note: "",
     status: "",
 };
 
@@ -600,6 +651,10 @@ function fillFormFromBooking(booking) {
             : (booking.recurrence_days ?? ""),
         recurrence_period: booking.recurrence_period ?? "",
         recurrence_until: normalizeRecurrenceUntil(booking.recurrence_until),
+        meeting_title: booking.meeting_title ?? "",
+        meeting_chairman: booking.meeting_chairman ?? "",
+        snack_required: !!booking.snack_required,
+        snack_note: booking.snack_note ?? "",
         status: booking.status ?? "",
     });
 }
@@ -662,6 +717,11 @@ async function saveBooking() {
             return;
         }
 
+        if (bookingObject.snack_required && !String(bookingObject.snack_note || "").trim()) {
+            formError.value = "Please enter snack note.";
+            return;
+        }
+
         const payload = {
             room_id: Number(bookingObject.room_id),
             start_datetime: toMysqlDatetime(bookingObject.start_datetime),
@@ -670,6 +730,10 @@ async function saveBooking() {
             recurrence_days: recurrenceDays,
             recurrence_period: recurrencePeriod,
             recurrence_until: bookingObject.recurrence_until || null,
+            meeting_title: bookingObject.meeting_title || null,
+            meeting_chairman: bookingObject.meeting_chairman || null,
+            snack_required: !!bookingObject.snack_required,
+            snack_note: bookingObject.snack_required ? (bookingObject.snack_note || null) : null,
         };
 
         let response = null;
@@ -917,6 +981,19 @@ const columns = [
     {
         header: "User",
         accessorFn: (row) => row.user?.name ?? "-",
+    },
+    {
+        header: "Meeting Title",
+        accessorFn: (row) => row.meeting_title ?? "-",
+    },
+    {
+        header: "Chairman",
+        accessorFn: (row) => row.meeting_chairman ?? "-",
+    },
+    {
+        header: "Snack",
+        accessorFn: (row) => (row.snack_required ? "Yes" : "No"),
+        meta: { align: "center" },
     },
     {
         header: "Start",
