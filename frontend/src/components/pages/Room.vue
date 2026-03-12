@@ -384,7 +384,7 @@ function toFormData(isUpdate = false) {
     imagesFiles.forEach((f) => fd.append("images[]", f));
 
     if (isUpdate) {
-        fd.append("_method", "PUT");
+        fd.append("_method", "POST");
     }
 
     return fd;

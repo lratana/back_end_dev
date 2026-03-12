@@ -92,9 +92,7 @@
                                 </div>
                             </div>
 
-                            <small class="text-muted d-block mt-1">
-                                Search and select one room
-                            </small>
+                            <small class="text-muted d-block mt-1">Search and select one room</small>
                         </div>
 
                         <div class="form-group col-md-6">
@@ -118,6 +116,18 @@
                         </div>
 
                         <div class="form-group col-md-6">
+                            <label>Meeting Title</label>
+                            <input v-model="bookingForm.meeting_title" type="text" class="form-control"
+                                placeholder="Meeting title" />
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label>Meeting Chairman</label>
+                            <input v-model="bookingForm.meeting_chairman" type="text" class="form-control"
+                                placeholder="Chairman name" />
+                        </div>
+
+                        <div class="form-group col-md-6">
                             <label>Recurrence Period</label>
                             <input v-model="bookingForm.recurrence_period" type="number" min="1" class="form-control" />
                         </div>
@@ -132,6 +142,20 @@
                             <input v-model="bookingForm.recurrence_days" type="text" class="form-control"
                                 placeholder="mon,tue or wed,fri" />
                             <small class="text-muted">Use: mon, tue, wed, thu, fri, sat, sun</small>
+                        </div>
+
+                        <div class="form-group col-md-4">
+                            <label>Snack Required</label>
+                            <select v-model="bookingForm.snack_required" class="form-control">
+                                <option :value="false">No</option>
+                                <option :value="true">Yes</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-8">
+                            <label>Snack Note</label>
+                            <input v-model="bookingForm.snack_note" type="text" class="form-control"
+                                placeholder="Snack detail" :disabled="!bookingForm.snack_required" />
                         </div>
                     </div>
                 </div>
@@ -195,6 +219,22 @@
                                     <th>User</th>
                                     <td>{{ selected.user.name }}</td>
                                 </tr>
+                                <tr v-if="selected.meeting_title">
+                                    <th>Meeting Title</th>
+                                    <td>{{ selected.meeting_title }}</td>
+                                </tr>
+                                <tr v-if="selected.meeting_chairman">
+                                    <th>Meeting Chairman</th>
+                                    <td>{{ selected.meeting_chairman }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Snack Required</th>
+                                    <td>{{ selected.snack_required ? "Yes" : "No" }}</td>
+                                </tr>
+                                <tr v-if="selected.snack_note">
+                                    <th>Snack Note</th>
+                                    <td>{{ selected.snack_note }}</td>
+                                </tr>
                                 <tr v-if="selected.recurrence_type">
                                     <th>Recurrence Type</th>
                                     <td>{{ selected.recurrence_type }}</td>
@@ -214,6 +254,7 @@
                             </tbody>
                         </table>
                     </div>
+
                     <div v-else class="text-muted">No data</div>
                 </div>
 
@@ -307,6 +348,10 @@ const bookingForm = reactive({
     recurrence_days: "",
     recurrence_period: "",
     recurrence_until: "",
+    meeting_title: "",
+    meeting_chairman: "",
+    snack_required: false,
+    snack_note: "",
 });
 
 const currentUser = computed(() => {
@@ -322,9 +367,7 @@ const isAdmin = computed(() => currentUser.value?.level === "admin");
 const filteredRooms = computed(() => {
     const keyword = roomKeyword.value.trim().toLowerCase();
 
-    if (!keyword) {
-        return rooms.value.slice(0, 10);
-    }
+    if (!keyword) return rooms.value.slice(0, 10);
 
     return rooms.value
         .filter((room) => String(room.name || "").toLowerCase().includes(keyword))
@@ -399,6 +442,7 @@ function formatForInput(dt) {
 
 function parseRecurrenceDays(value) {
     if (!value) return null;
+
     return String(value)
         .split(",")
         .map((x) => x.trim().toLowerCase())
@@ -480,6 +524,10 @@ function resetForm() {
     bookingForm.recurrence_days = "";
     bookingForm.recurrence_period = "";
     bookingForm.recurrence_until = "";
+    bookingForm.meeting_title = "";
+    bookingForm.meeting_chairman = "";
+    bookingForm.snack_required = false;
+    bookingForm.snack_note = "";
     formError.value = "";
 
     roomKeyword.value = "";
@@ -504,7 +552,9 @@ async function fetchEvents(info, successCallback, failureCallback) {
         successCallback(
             bookings.map((b) => ({
                 id: String(b.id),
-                title: b.room?.name ?? `Room ${b.room_id}`,
+                title: b.meeting_title
+                    ? `${b.room?.name ?? `Room ${b.room_id}`} - ${b.meeting_title}`
+                    : (b.room?.name ?? `Room ${b.room_id}`),
                 start: normalizeDt(b.start_datetime),
                 end: normalizeDt(b.end_datetime),
                 editable: !isPastBooking(b) && (isAdmin.value || b.status === "pending"),
@@ -600,6 +650,10 @@ async function submitCreateBooking() {
             recurrence_days: recurrenceDays,
             recurrence_period: recurrencePeriod,
             recurrence_until: bookingForm.recurrence_until || null,
+            meeting_title: bookingForm.meeting_title || null,
+            meeting_chairman: bookingForm.meeting_chairman || null,
+            snack_required: !!bookingForm.snack_required,
+            snack_note: bookingForm.snack_required ? (bookingForm.snack_note || null) : null,
         });
 
         hideCreateModal();
@@ -652,6 +706,10 @@ async function eventDrop(info) {
                 : parseRecurrenceDays(booking.recurrence_days),
             recurrence_period: booking.recurrence_period ?? null,
             recurrence_until: booking.recurrence_until ?? null,
+            meeting_title: booking.meeting_title ?? null,
+            meeting_chairman: booking.meeting_chairman ?? null,
+            snack_required: !!booking.snack_required,
+            snack_note: booking.snack_note ?? null,
         });
 
         await reloadBookingAfterAction(booking.id);
@@ -688,6 +746,10 @@ async function eventResize(info) {
                 : parseRecurrenceDays(booking.recurrence_days),
             recurrence_period: booking.recurrence_period ?? null,
             recurrence_until: booking.recurrence_until ?? null,
+            meeting_title: booking.meeting_title ?? null,
+            meeting_chairman: booking.meeting_chairman ?? null,
+            snack_required: !!booking.snack_required,
+            snack_note: booking.snack_note ?? null,
         });
 
         await reloadBookingAfterAction(booking.id);

@@ -136,10 +136,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin-cancel/{booking}', [BookingController::class, 'adminCancel']);
         Route::delete('/delete/{booking}', [BookingController::class, 'destroy']);
     });
-
+    // Rooms - authenticated users can read
     Route::prefix('rooms')->group(function () {
         Route::get('/', [RoomController::class, 'index']);
         Route::get('/read/{room}', [RoomController::class, 'show']);
+    });
+
+    // Departments - authenticated users can read
+    Route::prefix('departments')->group(function () {
+        Route::get('/', [DepartmentController::class, 'index']);
+        Route::get('/read/{department}', [DepartmentController::class, 'show']);
     });
 
     Route::get('/dashboard', [BookingController::class, 'dashboard']);

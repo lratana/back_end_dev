@@ -15,10 +15,16 @@ class Booking extends Model
 
         'recurrence_type',
         'recurrence_days',
-        'recurrence_period',   // ✅ added
+        'recurrence_period',
         'recurrence_until',
 
-        'status'
+        'meeting_title',
+        'meeting_chairman',
+
+        'snack_required',
+        'snack_note',
+
+        'status',
     ];
 
     protected $casts = [
@@ -27,8 +33,9 @@ class Booking extends Model
 
         'recurrence_days' => 'array',
         'recurrence_until' => 'date',
+        'recurrence_period' => 'integer',
 
-        'recurrence_period' => 'string' // ✅ optional but clean
+        'snack_required' => 'boolean',
     ];
 
     public function room()
