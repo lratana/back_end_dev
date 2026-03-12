@@ -22,7 +22,6 @@ export const MessageModal = async (icon, title, text, callback) => {
         }
     })
 }
-
 export const CloseModal = () => {
     Swal.close();
 }
