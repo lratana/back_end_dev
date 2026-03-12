@@ -159,7 +159,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="modal-footer justify-content-between">
                     <button class="btn btn-default" type="button" @click="hideCreateModal">Close</button>
                     <button class="btn btn-primary" type="button" :disabled="saving" @click="submitCreateBooking">
