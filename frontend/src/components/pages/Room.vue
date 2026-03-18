@@ -518,7 +518,7 @@ async function deleteRoomImage(img) {
 }
 
 const columns = computed(() => [
-    { header: "ID", accessorKey: "id", meta: { align: "center" } },
+    { header: "No", accessorKey: "id", meta: { align: "center" } },
     {
         header: "Photo",
         accessorKey: "photo",

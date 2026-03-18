@@ -13,7 +13,16 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
+            'phone' => $this->phone,
             'photo' => $this->photo,
+
+            // ✅ OPTIONAL (good for UI)
+            'department_id' => $this->department_id,
+            'department' => $this->department ? [
+                'id' => $this->department->id,
+                'name' => $this->department->name,
+                'code' => $this->department->code,
+            ] : null,
         ];
     }
 }

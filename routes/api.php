@@ -31,10 +31,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/signout', [AuthController::class, 'signout']);
     Route::PATCH('/token/refresh', [AuthController::class, 'refreshToken']);
     Route::get('/verify/account', [AuthController::class, 'verifyAccount']);
-    Route::put('/password/change', [AuthController::class, 'changePassword']);
-    Route::put('/password/create', [AuthController::class, 'createPassword']);
+    Route::PATCH('/password/change', [AuthController::class, 'changePassword']);
+    Route::PATCH('/password/create', [AuthController::class, 'createPassword']);
     // ... existing routes
-    Route::put('/update/photo', [AuthController::class, 'updateUserPhoto']);
+    Route::PATCH('/update/photo', [AuthController::class, 'updateUserPhoto']);
 
 
     // Backup routes
@@ -97,7 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ChatController::class, 'getChats']);
         Route::post('/create', [ChatController::class, 'createChat']);
         Route::get('/read/{chatId}', [ChatController::class, 'readChat']);
-        Route::put('/update/{chatId}', [ChatController::class, 'updateGroupChat']);
+        Route::PATCH('/update/{chatId}', [ChatController::class, 'updateGroupChat']);
         Route::delete('/delete/{chatId}', [ChatController::class, 'deleteGroupChat']);
         Route::post('/leave/{chatId}', [ChatController::class, 'leaveGroupChat']);
         Route::get('/read/{chatId}/{folder}/{filename}', [ChatController::class, 'readChatFile']);
@@ -106,7 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Chat messages
         Route::get('/{chatId}/messages', [ChatMessageController::class, 'getMessages']);
         Route::post('/{chatId}/messages/create', [ChatMessageController::class, 'createMessage']);
-        Route::put('/{chatId}/messages/update/{messageId}', [ChatMessageController::class, 'updateMessage']);
+        Route::PATCH('/{chatId}/messages/update/{messageId}', [ChatMessageController::class, 'updateMessage']);
         Route::delete('/{chatId}/messages/delete/{messageId}', [ChatMessageController::class, 'deleteMessage']);
         Route::post('/{chatId}/messages/seen/{messageId}', [ChatMessageController::class, 'markMessageAsSeen']);
         Route::post('/{chatId}/messages/seen-all', [ChatMessageController::class, 'markAllMessagesAsSeen']);
@@ -114,7 +114,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Chat members
         Route::get('/{chatId}/members', [ChatMemberController::class, 'getMembers']);
         Route::post('/{chatId}/members/add', [ChatMemberController::class, 'addMember']);
-        Route::put('/{chatId}/members/update/{memberId}', [ChatMemberController::class, 'updateMember']);
+        Route::PATCH('/{chatId}/members/update/{memberId}', [ChatMemberController::class, 'updateMember']);
         Route::delete('/{chatId}/members/remove/{memberId}', [ChatMemberController::class, 'removeMember']);
     });
 

@@ -973,7 +973,7 @@ onMounted(async () => {
 });
 
 const columns = [
-    { header: "ID", accessorKey: "id" },
+    { header: "No", accessorKey: "id" },
     {
         header: "Room",
         accessorFn: (row) => row.room?.name ?? `Room #${row.room_id}`,

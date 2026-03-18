@@ -11,11 +11,19 @@ export function apiReadDetailUser(id) {
 }
 
 export function apiCreateUser(data) {
-    return axios.post(window.API_URL + `/manage/users/create`, data);
+    return axios.post(window.API_URL + `/manage/users/create`, data, {
+        headers: {
+            "Content-Type": "multipart/form-data",
+        },
+    });
 }
 
 export function apiUpdateUser(id, data) {
-    return axios.put(window.API_URL + `/manage/users/update/${id}`, data);
+    return axios.post(window.API_URL + `/manage/users/update/${id}`, data, {
+        headers: {
+            "Content-Type": "multipart/form-data",
+        },
+    });
 }
 
 export function apiDeleteUser(id) {

@@ -15,41 +15,28 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class User extends Authenticatable implements MustVerifyEmailContract
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
-    use HasApiTokens, MustVerifyEmail;
+    use HasFactory, Notifiable, HasApiTokens, MustVerifyEmail;
 
     protected $appends = [
         'password_null',
     ];
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+
     protected $fillable = [
         'name',
         'email',
+        'phone',
         'password',
         'email_verified_at',
-        'photo'
+        'photo',
+        'level',
+        'department_id', // ✅ IMPORTANT
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -58,7 +45,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         ];
     }
 
-    protected function Photo(): Attribute
+    protected function photo(): Attribute
     {
         return Attribute::make(
             get: fn(string|null $value) => $value ?
@@ -67,9 +54,16 @@ class User extends Authenticatable implements MustVerifyEmailContract
         );
     }
 
-    function getPasswordNullAttribute(): bool
+    public function getPasswordNullAttribute(): bool
     {
         return empty($this->password);
+    }
+
+
+    // ✅ NEW RELATION
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 
     public function sendEmailVerificationNotification()
@@ -105,9 +99,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
             ->where('chat_id', $chatId)
             ->wherePivot('role', 'admin')
             ->first();
+
         if (!$chat) {
             throw new ModelNotFoundException('Chat not found or user is not an admin.');
         }
+
         return $chat;
     }
 
@@ -116,9 +112,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         $chat = $this->chats()
             ->where('chat_id', $chatId)
             ->first();
+
         if (!$chat) {
             throw new ModelNotFoundException('Chat not found.');
         }
+
         return $chat;
     }
 
@@ -127,9 +125,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         $member = $this->members()
             ->where('chat_id', $chatId)
             ->first();
+
         if (!$member) {
             throw new ModelNotFoundException('You are not a member of this chat.');
         }
+
         return $member;
     }
 
@@ -139,9 +139,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
             ->where('id', $messageId)
             ->where('chat_id', $chatId)
             ->first();
+
         if (!$message) {
             throw new ModelNotFoundException('Chat message not found.');
         }
+
         return $message;
     }
 }

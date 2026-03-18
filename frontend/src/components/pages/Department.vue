@@ -258,7 +258,7 @@ function onDelete(id) {
 
 /** Columns (User-style action header has Create button) */
 const columns = computed(() => [
-    { header: "ID", accessorKey: "id", meta: { align: "center" } },
+    { header: "No", accessorKey: "id", meta: { align: "center" } },
     { header: "Name", accessorKey: "name", meta: { align: "left" } },
     { header: "Code", accessorKey: "code", meta: { align: "center" } },
     {
