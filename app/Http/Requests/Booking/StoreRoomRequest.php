@@ -47,7 +47,7 @@ class StoreRoomRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'department_id' => ['required', 'integer', 'exists:departments,id'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'location' => ['nullable', 'string', 'max:255'],

@@ -66,7 +66,6 @@ class UpdateRoomRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'department_id.required' => 'Department is required.',
             'department_id.exists' => 'Selected department is invalid.',
             'name.required' => 'Room name is required.',
             'capacity.required' => 'Capacity is required.',

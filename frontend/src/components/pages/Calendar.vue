@@ -126,6 +126,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { apiGetCalendar } from "@func/api/calendar";
+import { formatFullDateTime } from "@func/datetime";
 
 const calendarRef = ref(null);
 
@@ -155,9 +156,7 @@ function normalizeDt(dt) {
 
 function fmt(dt) {
     if (!dt) return "-";
-    const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return String(dt);
-    return d.toLocaleString();
+    return formatFullDateTime(dt);
 }
 
 function isPastBooking(booking) {

@@ -3,7 +3,7 @@
     <div class="login-box">
       <div class="card card-outline card-primary">
         <div class="card-header text-center">
-          <router-link to="/" class="h1"><b>Admin</b>LTE</router-link>
+          <router-link to="/" class="h1">MRM System</router-link>
         </div>
 
         <div class="card-body">

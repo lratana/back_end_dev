@@ -162,6 +162,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
+import { formatFullDateTime } from "@func/datetime";
 
 const loading = ref(false);
 const error = ref("");
@@ -184,8 +185,7 @@ function normalizeDt(dt) {
 
 function formatDateTime(dt) {
   if (!dt) return "-";
-  const d = new Date(normalizeDt(dt));
-  return Number.isNaN(d.getTime()) ? String(dt) : d.toLocaleString();
+  return formatFullDateTime(dt);
 }
 
 function statusBadgeClass(status) {

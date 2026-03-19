@@ -2,7 +2,7 @@
     <aside class="main-sidebar sidebar-dark-primary elevation-4" style="height: auto">
         <router-link :to="{ name: 'dashboard' }" class="brand-link">
             <img :src="logoImg" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: 0.8" />
-            <span class="brand-text font-weight-light">SMMR System</span>
+            <span class="brand-text font-weight-light">MRM System</span>
         </router-link>
 
         <div class="sidebar">

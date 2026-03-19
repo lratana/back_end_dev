@@ -326,14 +326,13 @@
         </div>
     </div>
 </template>
-
 <script setup>
 import { computed, h, onMounted, reactive, ref } from "vue";
 import { useStore } from "vuex";
 import Swal from "sweetalert2";
 import CustomTable from "../includes/tables/CustomTable.vue";
 import { CloseModal, LoadingModal, MessageModal } from "@func/swal";
-
+import { formatFullDateTime } from "@func/datetime";
 import {
     apiGetBookings,
     apiCreateBooking,
@@ -389,35 +388,37 @@ const filteredBookings = computed(() => {
 });
 
 function normalizeDt(dt) {
-    if (!dt) return null;
-    return String(dt).replace(" ", "T");
+    return dt ? String(dt).replace(" ", "T") : null;
 }
 
 function fmt(dt) {
     if (!dt) return "-";
-    const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return String(dt);
-    return d.toLocaleString();
+    return formatFullDateTime(dt);
 }
 
 function fmtDateOnly(dt) {
     if (!dt) return "-";
-    const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return String(dt);
-    return d.toLocaleDateString();
+    return formatFullDateTime(dt).split(",")[0];
+    // example: "Mar 19"
 }
 
 function toLocalInput(dt) {
     if (!dt) return "";
     const d = new Date(normalizeDt(dt));
     if (Number.isNaN(d.getTime())) return "";
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const ii = String(d.getMinutes()).padStart(2, "0");
+
+    return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
 }
 
-function toMysqlDatetime(dt) {
-    if (!dt) return null;
-    return String(dt).replace("T", " ");
+
+function toMysqlDatetime(value) {
+    return value ? String(value).replace("T", " ") : null;
 }
 
 function normalizeRecurrenceUntil(dt) {
@@ -973,7 +974,10 @@ onMounted(async () => {
 });
 
 const columns = [
-    { header: "No", accessorKey: "id" },
+    {
+        header: "No",
+        cell: ({ row }) => row.index + 1,
+    },
     {
         header: "Room",
         accessorFn: (row) => row.room?.name ?? `Room #${row.room_id}`,

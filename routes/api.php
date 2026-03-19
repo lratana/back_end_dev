@@ -7,6 +7,7 @@ use App\Http\Controllers\API\ChatController;
 use App\Http\Controllers\API\ChatMemberController;
 use App\Http\Controllers\API\ChatMessageController;
 use App\Http\Controllers\API\DepartmentController;
+use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\RoomController;
 use App\Http\Controllers\API\RoomImageController;
 use App\Http\Controllers\API\UserController;
@@ -136,6 +137,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin-cancel/{booking}', [BookingController::class, 'adminCancel']);
         Route::delete('/delete/{booking}', [BookingController::class, 'destroy']);
     });
+
+    // Notifications
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread', [NotificationController::class, 'unread']);
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+        Route::delete('/{id}', [NotificationController::class, 'destroy']);
+    });
+
     // Rooms - authenticated users can read
     Route::prefix('rooms')->group(function () {
         Route::get('/', [RoomController::class, 'index']);
@@ -148,8 +159,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/read/{department}', [DepartmentController::class, 'show']);
     });
 
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/rooms/status-board', [RoomController::class, 'statusBoard']);
-    });
+    Route::get('/rooms/status-board', [RoomController::class, 'statusBoard']);
     Route::get('/dashboard', [BookingController::class, 'dashboard']);
 });

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Booking\StoreBookingRequest;
-use App\Http\Requests\Booking\UpdateBookingRequest;
+use App\Models\User;
 use App\Models\Booking;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Notifications\BookingStatusNotification;
+use App\Http\Requests\Booking\StoreBookingRequest;
+use App\Http\Requests\Booking\UpdateBookingRequest;
 
 class BookingController extends Controller
 {
@@ -330,8 +332,22 @@ class BookingController extends Controller
         }
 
         $booking = Booking::create($data);
+        $booking->load(['room', 'user']);
 
-        return response()->json($booking->load(['room', 'user']), 201);
+        $admins = User::query()
+            ->where('level', 'admin')
+            ->where('id', '<>', $request->user()->id)
+            ->get();
+
+        foreach ($admins as $admin) {
+            $admin->notify(new BookingStatusNotification(
+                $booking,
+                'New Booking Request',
+                ($booking->user?->name ?? 'A user') . ' submitted a new booking request for room ' . ($booking->room?->name ?? 'N/A') . '.'
+            ));
+        }
+
+        return response()->json($booking, 201);
     }
 
     public function update(UpdateBookingRequest $request, Booking $booking)
@@ -401,9 +417,24 @@ class BookingController extends Controller
             'status' => 'cancel_requested'
         ]);
 
+        $booking->load(['room', 'user']);
+
+        $admins = User::query()
+            ->where('level', 'admin')
+            ->where('id', '<>', $request->user()->id)
+            ->get();
+
+        foreach ($admins as $admin) {
+            $admin->notify(new BookingStatusNotification(
+                $booking,
+                'Cancellation Requested',
+                ($booking->user?->name ?? 'A user') . ' requested cancellation for booking in room ' . ($booking->room?->name ?? 'N/A') . '.'
+            ));
+        }
+
         return response()->json([
             'message' => 'Cancel request submitted successfully',
-            'data' => $booking->load(['room', 'user'])
+            'data' => $booking
         ]);
     }
 
@@ -440,9 +471,19 @@ class BookingController extends Controller
             'status' => 'approved'
         ]);
 
+        $booking->load(['room', 'user']);
+
+        if ($booking->user) {
+            $booking->user->notify(new BookingStatusNotification(
+                $booking,
+                'Booking Approved',
+                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been approved.'
+            ));
+        }
+
         return response()->json([
             'message' => 'Booking approved successfully',
-            'data' => $booking->load(['room', 'user'])
+            'data' => $booking
         ]);
     }
 
@@ -468,9 +509,19 @@ class BookingController extends Controller
             'status' => 'rejected'
         ]);
 
+        $booking->load(['room', 'user']);
+
+        if ($booking->user) {
+            $booking->user->notify(new BookingStatusNotification(
+                $booking,
+                'Booking Rejected',
+                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been rejected.'
+            ));
+        }
+
         return response()->json([
             'message' => 'Booking rejected successfully',
-            'data' => $booking->load(['room', 'user'])
+            'data' => $booking
         ]);
     }
 
@@ -496,9 +547,19 @@ class BookingController extends Controller
             'status' => 'cancelled'
         ]);
 
+        $booking->load(['room', 'user']);
+
+        if ($booking->user) {
+            $booking->user->notify(new BookingStatusNotification(
+                $booking,
+                'Booking Cancelled',
+                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been cancelled.'
+            ));
+        }
+
         return response()->json([
             'message' => 'Booking cancelled successfully',
-            'data' => $booking->load(['room', 'user'])
+            'data' => $booking
         ]);
     }
 
@@ -524,9 +585,19 @@ class BookingController extends Controller
             'status' => 'cancelled'
         ]);
 
+        $booking->load(['room', 'user']);
+
+        if ($booking->user) {
+            $booking->user->notify(new BookingStatusNotification(
+                $booking,
+                'Booking Cancelled by Admin',
+                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been cancelled by admin.'
+            ));
+        }
+
         return response()->json([
             'message' => 'Booking cancelled successfully by admin',
-            'data' => $booking->load(['room', 'user'])
+            'data' => $booking
         ]);
     }
 

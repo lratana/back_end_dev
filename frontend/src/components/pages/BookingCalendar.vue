@@ -303,7 +303,7 @@ import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-
+import { formatFullDateTime } from "@func/datetime";
 import {
     apiGetCalendar,
     apiCreateBooking,
@@ -415,14 +415,13 @@ function toMysqlDatetime(value) {
 
 function fmt(dt) {
     if (!dt) return "-";
-    const d = new Date(normalizeDt(dt));
-    return Number.isNaN(d.getTime()) ? String(dt) : d.toLocaleString();
+    return formatFullDateTime(dt);
 }
 
 function fmtDateOnly(dt) {
     if (!dt) return "-";
-    const d = new Date(normalizeDt(dt));
-    return Number.isNaN(d.getTime()) ? String(dt) : d.toLocaleDateString();
+    return formatFullDateTime(dt).split(",")[0];
+    // example: "Mar 19"
 }
 
 function formatForInput(dt) {
