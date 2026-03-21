@@ -16,10 +16,12 @@
                     </div>
                 </div>
             </router-link>
+
             <nav class="mt-2">
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
                     data-accordion="false">
                     <li class="nav-header">MAIN</li>
+
                     <li class="nav-item">
                         <router-link :to="{ name: 'dashboard' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-tachometer-alt"></i>
@@ -27,31 +29,48 @@
                         </router-link>
                     </li>
 
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'notifications' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-bell"></i>
+                            <p>
+                                Notifications
+                                <span v-if="unreadNotificationCount > 0" class="right badge badge-danger">
+                                    {{ unreadNotificationCount > 99 ? "99+" : unreadNotificationCount }}
+                                </span>
+                            </p>
+                        </router-link>
+                    </li>
+
                     <li class="nav-header">MEETING MANAGEMENT</li>
+
                     <li class="nav-item">
                         <router-link :to="{ name: 'bookings' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-calendar-check"></i>
                             <p>Bookings</p>
                         </router-link>
                     </li>
+
                     <li class="nav-item">
                         <router-link :to="{ name: 'bookingscalendar' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-calendar-alt"></i>
                             <p>Bookings Calendar</p>
                         </router-link>
                     </li>
+
                     <li class="nav-item">
                         <router-link :to="{ name: 'calendar' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-calendar-week"></i>
                             <p>Calendar</p>
                         </router-link>
                     </li>
+
                     <li class="nav-item">
                         <router-link :to="{ name: 'rooms' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-door-open"></i>
                             <p>Rooms</p>
                         </router-link>
                     </li>
+
                     <li class="nav-item">
                         <router-link :to="{ name: 'roomStatusBoard' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-tv"></i>
@@ -60,6 +79,7 @@
                     </li>
 
                     <li v-if="isAdmin" class="nav-header">ORGANIZATION</li>
+
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'departments' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-building"></i>
@@ -68,22 +88,23 @@
                     </li>
 
                     <li v-if="isAdmin" class="nav-header">SYSTEM</li>
+
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'users' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-users"></i>
                             <p>Users</p>
                         </router-link>
                     </li>
+
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'backups' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-database"></i>
                             <p>Backups</p>
                         </router-link>
                     </li>
-
-
                 </ul>
             </nav>
+
             <hr />
 
             <div class="form-inline">
@@ -102,16 +123,20 @@
                 <ul v-if="searchQuery" class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
                     data-accordion="false">
                     <li class="nav-header">Search Results</li>
+
                     <li @click="clearSearchQuery" class="nav-item" v-for="user in filteredUsers" :key="user.id">
                         <UserOption :user="user" />
                     </li>
+
                     <li @click="clearSearchQuery" class="nav-item" v-for="chat in sortedFilteredChats" :key="chat.id">
                         <ChatOption :chat="chat" />
                     </li>
+
                     <li v-if="isLoadingMoreSearch" class="nav-item text-center p-2">
                         <i class="fas fa-spinner fa-spin"></i> Loading...
                     </li>
                 </ul>
+
                 <ul v-else class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
                     data-accordion="false">
                     <li class="nav-header d-flex justify-content-between align-items-center">
@@ -120,9 +145,11 @@
                             New Chat
                         </button>
                     </li>
+
                     <li @click="clearSearchQuery" class="nav-item" v-for="chat in sortedRecentChats" :key="chat.id">
                         <ChatOption :chat="chat" />
                     </li>
+
                     <li v-if="isLoadingMore" class="nav-item text-center p-2">
                         <i class="fas fa-spinner fa-spin"></i> Loading...
                     </li>
@@ -130,8 +157,10 @@
             </nav>
         </div>
     </aside>
+
     <ChatModal ref="chatModal" />
 </template>
+
 <script setup>
 import emptyPhoto from "@assets/images/emptyuser.png";
 import logoImg from "admin-lte/dist/img/AdminLTELogo.png";
@@ -140,6 +169,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { MessageModal } from "@func/swal";
 import { apiGetChats, apiGetChatFile } from "@func/api/chat";
 import { apiGetUsers } from "@func/api/user";
+import { apiGetUnreadNotifications } from "@func/api/notification";
 
 import ChatOption from "@com/includes/controls/ChatOption.vue";
 import UserOption from "@com/includes/controls/UserOption.vue";
@@ -149,8 +179,13 @@ import { useRoute, useRouter } from "vue-router";
 const router = useRouter();
 const route = useRoute();
 const store = useStore();
+
 const userData = computed(() => store.state.user);
 const isAdmin = computed(() => userData.value && userData.value.level === "admin");
+
+// Notification count
+const unreadNotificationCount = ref(0);
+let notificationInterval = null;
 
 // Settings menu state
 const settingsRoutes = ["profile", "change-password", "preferences"];
@@ -187,7 +222,7 @@ const sortedRecentChats = computed(() => {
     return [...recentChats.value].sort((a, b) => {
         const timeA = a.last_message?.created_at;
         const timeB = b.last_message?.created_at;
-        return new Date(timeB) - new Date(timeA); // Descending order (newest first)
+        return new Date(timeB) - new Date(timeA);
     });
 });
 
@@ -199,15 +234,39 @@ const sortedFilteredChats = computed(() => {
     });
 });
 
+async function loadUnreadNotificationCount() {
+    try {
+        const response = await apiGetUnreadNotifications();
+        unreadNotificationCount.value = response.data?.count || 0;
+    } catch (error) {
+        console.error("Failed to load unread notification count:", error);
+    }
+}
+
+function subscribeToNotificationCountChannel(userId) {
+    if (!userId || !window.Echo) return;
+
+    window.Echo.private(`App.Models.User.${userId}`)
+        .notification(() => {
+            loadUnreadNotificationCount();
+        });
+}
+
 onMounted(async () => {
     window.addEventListener("chatCreated", onChatCreated);
     window.addEventListener("chatUpdated", onChatUpdated);
     window.addEventListener("chatDeleted", onChatDeleted);
 
-    // Subscribe to the user's private ChatEvent channel for real-time chat events
     if (userData.value?.id) {
         subscribeToChatChannel(userData.value.id);
+        subscribeToNotificationCountChannel(userData.value.id);
     }
+
+    await loadUnreadNotificationCount();
+
+    notificationInterval = setInterval(() => {
+        loadUnreadNotificationCount();
+    }, 15000);
 
     try {
         const response = await apiGetChats();
@@ -218,7 +277,6 @@ onMounted(async () => {
         return MessageModal("error", "Error", error.response?.data?.message || error.message);
     }
 
-    // jQuery infinite scroll on sidebar
     $(".sidebar").on("scroll", function () {
         const $this = $(this);
         const scrollTop = $this.scrollTop();
@@ -241,21 +299,28 @@ onBeforeUnmount(() => {
     window.removeEventListener("chatUpdated", onChatUpdated);
     window.removeEventListener("chatDeleted", onChatDeleted);
 
-    // Leave the Echo ChatEvent channel
     if (userData.value?.id) {
         window.Echo.leave(`ChatEvent.${userData.value.id}`);
+        window.Echo.leave(`App.Models.User.${userData.value.id}`);
+    }
+
+    if (notificationInterval) {
+        clearInterval(notificationInterval);
     }
 });
 
-// If user data loads after mount, subscribe then
 watch(
     () => userData.value?.id,
     (newId, oldId) => {
         if (newId && newId !== oldId) {
             if (oldId) {
                 window.Echo.leave(`ChatEvent.${oldId}`);
+                window.Echo.leave(`App.Models.User.${oldId}`);
             }
+
             subscribeToChatChannel(newId);
+            subscribeToNotificationCountChannel(newId);
+            loadUnreadNotificationCount();
         }
     }
 );
@@ -280,9 +345,8 @@ function subscribeToChatChannel(userId) {
         .listen(".ChatDeleted", (e) => {
             const id = e.chatId;
             recentChats.value = recentChats.value.filter((c) => c.id !== id);
-            if (route.name === 'chats' && route.params.chatId == id) {
-                // If currently viewing the deleted chat, redirect to dashboard
-                router.push({ name: 'dashboard' });
+            if (route.name === "chats" && route.params.chatId == id) {
+                router.push({ name: "dashboard" });
             }
         });
 }
@@ -306,8 +370,8 @@ async function loadMoreChats() {
         isLoadingMore.value = false;
     }
 }
+
 watch(searchQuery, async (newQuery) => {
-    // Clear the previous timeout
     if (searchTimeout) {
         clearTimeout(searchTimeout);
     }
@@ -320,7 +384,6 @@ watch(searchQuery, async (newQuery) => {
         return;
     }
 
-    // Set a new timeout for 1 second
     searchTimeout = setTimeout(async () => {
         try {
             const response = await Promise.all([
@@ -400,6 +463,7 @@ async function loadMoreSearchResults() {
         isLoadingMoreSearch.value = false;
     }
 }
+
 async function processChatImages(chats) {
     await Promise.all(
         chats.map(async (chat) => {
@@ -414,6 +478,7 @@ async function processChatImages(chats) {
         })
     );
 }
+
 async function loadChatImage(uri) {
     try {
         const response = await apiGetChatFile(uri);
@@ -422,6 +487,7 @@ async function loadChatImage(uri) {
         return emptyPhoto;
     }
 }
+
 function clearSearchQuery() {
     searchQuery.value = "";
 }

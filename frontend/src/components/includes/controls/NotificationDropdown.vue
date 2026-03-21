@@ -1,6 +1,7 @@
 <template>
-    <li class="nav-item dropdown">
-        <a class="nav-link" href="#" role="button" @click.prevent="toggleDropdown">
+    <li class="nav-item dropdown notification-root">
+        <a class="nav-link notification-bell" href="#" role="button" @click.prevent="toggleDropdown"
+            :class="{ ringing: isBellRinging }">
             <i class="far fa-bell"></i>
             <span v-if="unreadCount > 0" class="badge badge-danger navbar-badge">
                 {{ unreadCount > 99 ? "99+" : unreadCount }}
@@ -8,7 +9,7 @@
         </a>
 
         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" :class="{ show: isOpen }"
-            style="max-height: 420px; overflow-y: auto; min-width: 360px;">
+            style="max-height: 420px; overflow-y: auto; min-width: 380px;">
             <span class="dropdown-item dropdown-header">
                 {{ unreadCount }} Unread Notification{{ unreadCount === 1 ? "" : "s" }}
             </span>
@@ -32,8 +33,8 @@
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1 pr-2" style="cursor: pointer;" @click="handleOpenNotification(item)">
                             <div class="d-flex align-items-center">
-                                <i class="fas fa-circle text-danger mr-2" style="font-size: 8px;"
-                                    v-if="!item.read_at"></i>
+                                <i v-if="!item.read_at" class="fas fa-circle text-danger mr-2"
+                                    style="font-size: 8px;"></i>
                                 <strong class="text-sm">
                                     {{ item.data?.title || "Notification" }}
                                 </strong>
@@ -71,10 +72,16 @@
                     Mark all as read
                 </button>
 
-                <button type="button" class="btn btn-sm btn-outline-secondary" @click="fetchNotifications"
-                    :disabled="actionLoading">
-                    Refresh
-                </button>
+                <div class="d-flex">
+                    <button type="button" class="btn btn-sm btn-outline-secondary mr-2" @click="fetchNotifications"
+                        :disabled="actionLoading">
+                        Refresh
+                    </button>
+
+                    <button type="button" class="btn btn-sm btn-outline-info" @click="goToAllNotifications">
+                        View All
+                    </button>
+                </div>
             </div>
         </div>
     </li>
@@ -83,6 +90,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
+import { useStore } from "vuex";
 import {
     apiDeleteNotification,
     apiGetNotifications,
@@ -92,14 +100,18 @@ import {
 } from "@func/api/notification";
 
 const router = useRouter();
+const store = useStore();
 
 const isOpen = ref(false);
 const loading = ref(false);
 const actionLoading = ref(false);
 const notifications = ref([]);
 const unreadCount = ref(0);
+const isBellRinging = ref(false);
 
 let pollInterval = null;
+let bellTimeout = null;
+let subscribedUserId = null;
 
 function formatDate(value) {
     if (!value) return "-";
@@ -107,11 +119,21 @@ function formatDate(value) {
     return date.toLocaleString();
 }
 
+function ringBell() {
+    isBellRinging.value = true;
+
+    if (bellTimeout) clearTimeout(bellTimeout);
+
+    bellTimeout = setTimeout(() => {
+        isBellRinging.value = false;
+    }, 1800);
+}
+
 async function fetchNotifications() {
     loading.value = true;
     try {
         const [allRes, unreadRes] = await Promise.all([
-            apiGetNotifications({ per_page: 10 }),
+            apiGetNotifications({ per_page: 5 }),
             apiGetUnreadNotifications(),
         ]);
 
@@ -141,11 +163,10 @@ async function markAsRead(item) {
         await apiMarkNotificationAsRead(item.id);
 
         const target = notifications.value.find((n) => n.id === item.id);
-        if (target) {
+        if (target && !target.read_at) {
             target.read_at = new Date().toISOString();
+            unreadCount.value = Math.max(0, unreadCount.value - 1);
         }
-
-        unreadCount.value = Math.max(0, unreadCount.value - 1);
     } catch (error) {
         console.error("Failed to mark notification as read:", error);
     } finally {
@@ -200,10 +221,20 @@ async function handleOpenNotification(item) {
     const bookingId = item.data?.booking_id;
 
     if (bookingId) {
-        router.push({ name: "bookings" });
+        router.push({
+            name: "notificationBookingDetail",
+            params: { id: bookingId }
+        });
+    } else {
+        router.push({ name: "notifications" });
     }
 
     isOpen.value = false;
+}
+
+function goToAllNotifications() {
+    isOpen.value = false;
+    router.push({ name: "notifications" });
 }
 
 async function toggleDropdown() {
@@ -215,16 +246,45 @@ async function toggleDropdown() {
 }
 
 function handleClickOutside(event) {
-    const dropdown = document.querySelector(".notification-item")?.closest(".nav-item.dropdown");
-    if (!dropdown) return;
+    const root = document.querySelector(".notification-root");
+    if (!root) return;
 
-    if (!dropdown.contains(event.target)) {
+    if (!root.contains(event.target)) {
         isOpen.value = false;
+    }
+}
+
+function subscribeToNotificationChannel(userId) {
+    if (!userId || !window.Echo) return;
+
+    if (subscribedUserId && subscribedUserId !== userId) {
+        window.Echo.leave(`App.Models.User.${subscribedUserId}`);
+    }
+
+    subscribedUserId = userId;
+
+    window.Echo.private(`App.Models.User.${userId}`)
+        .notification(async () => {
+            unreadCount.value += 1;
+            ringBell();
+            await fetchNotifications();
+        });
+}
+
+function leaveNotificationChannel() {
+    if (subscribedUserId && window.Echo) {
+        window.Echo.leave(`App.Models.User.${subscribedUserId}`);
+        subscribedUserId = null;
     }
 }
 
 onMounted(async () => {
     await fetchNotifications();
+
+    const userId = store.state.user?.id;
+    if (userId) {
+        subscribeToNotificationChannel(userId);
+    }
 
     pollInterval = setInterval(() => {
         fetchUnreadCountOnly();
@@ -234,10 +294,10 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-    if (pollInterval) {
-        clearInterval(pollInterval);
-    }
+    if (pollInterval) clearInterval(pollInterval);
+    if (bellTimeout) clearTimeout(bellTimeout);
 
+    leaveNotificationChannel();
     document.removeEventListener("click", handleClickOutside);
 });
 </script>
@@ -253,5 +313,60 @@ onBeforeUnmount(() => {
 
 .notification-item:hover {
     background-color: #f4f6f9;
+}
+
+.notification-bell {
+    position: relative;
+}
+
+.notification-bell.ringing i {
+    animation: bell-ring 0.9s ease-in-out 2;
+    color: #dc3545;
+}
+
+@keyframes bell-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    10% {
+        transform: rotate(18deg);
+    }
+
+    20% {
+        transform: rotate(-16deg);
+    }
+
+    30% {
+        transform: rotate(14deg);
+    }
+
+    40% {
+        transform: rotate(-12deg);
+    }
+
+    50% {
+        transform: rotate(10deg);
+    }
+
+    60% {
+        transform: rotate(-8deg);
+    }
+
+    70% {
+        transform: rotate(6deg);
+    }
+
+    80% {
+        transform: rotate(-4deg);
+    }
+
+    90% {
+        transform: rotate(2deg);
+    }
+
+    100% {
+        transform: rotate(0deg);
+    }
 }
 </style>

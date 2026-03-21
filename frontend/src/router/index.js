@@ -15,6 +15,8 @@ import Department from '@/components/pages/Department.vue';
 import Calendar from '@/components/pages/Calendar.vue';
 import BookingCalendar from '@/components/pages/BookingCalendar.vue';
 import RoomStatusBoard from '@/components/pages/RoomStatusBoard.vue';
+import Notifications from '@/components/pages/Notifications.vue';
+import NotificationBookingDetail from '@/components/pages/NotificationBookingDetail.vue';
 
 import { createRouter, createWebHistory } from 'vue-router'
 import Navbar from '@com/includes/Navbar.vue';
@@ -98,6 +100,21 @@ const router = createRouter({
       name: 'dashboard',
       components: {
         default: Dashboard,
+        ...includes,
+      },
+      meta: { guard: true },
+    },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      components: { default: Notifications, ...includes },
+      meta: { guard: true },
+    },
+    {
+      path: '/notifications/booking/:id',
+      name: 'notificationBookingDetail',
+      components: {
+        default: NotificationBookingDetail,
         ...includes,
       },
       meta: { guard: true },

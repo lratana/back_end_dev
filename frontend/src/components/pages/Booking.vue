@@ -326,9 +326,11 @@
         </div>
     </div>
 </template>
+
 <script setup>
-import { computed, h, onMounted, reactive, ref } from "vue";
+import { computed, h, onMounted, reactive, ref, watch } from "vue";
 import { useStore } from "vuex";
+import { useRoute, useRouter } from "vue-router";
 import Swal from "sweetalert2";
 import CustomTable from "../includes/tables/CustomTable.vue";
 import { CloseModal, LoadingModal, MessageModal } from "@func/swal";
@@ -345,10 +347,11 @@ import {
     apiAdminCancelBooking,
     apiDeleteBooking,
 } from "@func/api/booking";
-
 import { apiGetRooms } from "@func/api/room";
 
 const store = useStore();
+const route = useRoute();
+const router = useRouter();
 
 const bookingModal = ref(null);
 const detailModal = ref(null);
@@ -388,7 +391,19 @@ const filteredBookings = computed(() => {
 });
 
 function normalizeDt(dt) {
-    return dt ? String(dt).replace(" ", "T") : null;
+    if (!dt) return null;
+
+    if (dt instanceof Date) {
+        const yyyy = dt.getFullYear();
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const hh = String(dt.getHours()).padStart(2, "0");
+        const ii = String(dt.getMinutes()).padStart(2, "0");
+        const ss = String(dt.getSeconds()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}T${hh}:${ii}:${ss}`;
+    }
+
+    return String(dt).replace(" ", "T");
 }
 
 function fmt(dt) {
@@ -399,7 +414,6 @@ function fmt(dt) {
 function fmtDateOnly(dt) {
     if (!dt) return "-";
     return formatFullDateTime(dt).split(",")[0];
-    // example: "Mar 19"
 }
 
 function toLocalInput(dt) {
@@ -416,9 +430,20 @@ function toLocalInput(dt) {
     return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
 }
 
-
 function toMysqlDatetime(value) {
-    return value ? String(value).replace("T", " ") : null;
+    if (!value) return null;
+
+    if (value instanceof Date) {
+        const yyyy = value.getFullYear();
+        const mm = String(value.getMonth() + 1).padStart(2, "0");
+        const dd = String(value.getDate()).padStart(2, "0");
+        const hh = String(value.getHours()).padStart(2, "0");
+        const ii = String(value.getMinutes()).padStart(2, "0");
+        const ss = String(value.getSeconds()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd} ${hh}:${ii}:${ss}`;
+    }
+
+    return String(value).replace("T", " ");
 }
 
 function normalizeRecurrenceUntil(dt) {
@@ -545,6 +570,13 @@ function showDetailModal() {
 function hideDetailModal() {
     if (!window.$ || !detailModal.value) return;
     window.$(detailModal.value).modal("hide");
+    selectedBooking.value = null;
+
+    if (route.query.bookingId) {
+        const query = { ...route.query };
+        delete query.bookingId;
+        router.replace({ query });
+    }
 }
 
 function canOpenEdit(booking) {
@@ -581,7 +613,7 @@ function canConfirmCancel(booking) {
 function canAdminDirectCancel(booking) {
     if (!booking || !isAdmin.value) return false;
     if (isPastBooking(booking)) return false;
-    return ["pending", "approved"].includes(booking.status);
+    return ["pending", "approved", "cancel_requested"].includes(booking.status);
 }
 
 function canDelete(booking) {
@@ -627,6 +659,7 @@ function openCreate() {
 
 async function viewBooking(id) {
     try {
+        detailError.value = "";
         LoadingModal();
         const response = await apiGetBooking(id);
         const booking = response.data?.data ?? response.data?.booking ?? response.data;
@@ -636,8 +669,14 @@ async function viewBooking(id) {
         CloseModal();
     } catch (e) {
         CloseModal();
+        detailError.value = e?.response?.data?.message || e.message;
         return MessageModal("error", "Error", e?.response?.data?.message || e.message);
     }
+}
+
+async function openBookingDetailById(id) {
+    if (!id) return;
+    await viewBooking(id);
 }
 
 function fillFormFromBooking(booking) {
@@ -961,6 +1000,16 @@ function onBookingUpdate(b) {
     bookings.value = bookings.value.map((x) => (x.id === b.id ? b : x));
 }
 
+watch(
+    () => route.query.bookingId,
+    async (bookingId) => {
+        if (bookingId) {
+            await openBookingDetailById(bookingId);
+        }
+    },
+    { immediate: true }
+);
+
 onMounted(async () => {
     if (window.$ && bookingModal.value) {
         window.$(bookingModal.value).on("hide.bs.modal", () => resetData());
@@ -1022,15 +1071,15 @@ const columns = [
         accessorKey: "action",
         header: () => [
             "Actions",
-            h(
-                "button",
-                {
-                    type: "button",
-                    onClick: openCreate,
-                    class: "btn btn-sm btn-success ml-3",
-                },
-                "Create"
-            ),
+            // h(
+            //     "button",
+            //     {
+            //         type: "button",
+            //         onClick: openCreate,
+            //         class: "btn btn-sm btn-success ml-3",
+            //     },
+            //     "Create"
+            // ),
         ],
         cell: ({ row: { original } }) => [
             h(

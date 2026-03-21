@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\Booking;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 
 class BookingStatusNotification extends Notification
 {
@@ -23,10 +24,10 @@ class BookingStatusNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
-    public function toDatabase(object $notifiable): array
+    public function toArray(object $notifiable): array
     {
         return [
             'booking_id' => $this->booking->id,
@@ -45,5 +46,20 @@ class BookingStatusNotification extends Notification
             'end_datetime' => optional($this->booking->end_datetime)->toDateTimeString(),
             'created_at' => now()->toDateTimeString(),
         ];
+    }
+
+    public function toDatabase(object $notifiable): array
+    {
+        return $this->toArray($notifiable);
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'read_at' => null,
+            'created_at' => now()->toDateTimeString(),
+            'data' => $this->toArray($notifiable),
+        ]);
     }
 }
