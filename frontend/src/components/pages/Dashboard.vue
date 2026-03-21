@@ -81,7 +81,8 @@
               </button>
 
               <router-link class="btn btn-sm btn-success ml-auto" :to="{ name: 'bookings' }">New Booking</router-link>
-              <router-link class="btn btn-sm btn-outline-secondary" :to="{ name: 'calendar' }">Calendar</router-link>
+              <router-link class="btn btn-sm btn-outline-secondary"
+                :to="{ name: 'bookingscalendar' }">Calendar</router-link>
             </div>
           </div>
         </div>

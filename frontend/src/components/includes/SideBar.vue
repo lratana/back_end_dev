@@ -1,7 +1,7 @@
 <template>
     <aside class="main-sidebar sidebar-dark-primary elevation-4" style="height: auto">
         <router-link :to="{ name: 'dashboard' }" class="brand-link">
-            <img :src="logoImg" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: 0.8" />
+            <img :src="logo" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: 0.8" />
             <span class="brand-text font-weight-light">MRM System</span>
         </router-link>
 
@@ -56,13 +56,13 @@
                             <p>Bookings Calendar</p>
                         </router-link>
                     </li>
-
-                    <li class="nav-item">
+                    <!-- Remove -->
+                    <!-- <li class="nav-item">
                         <router-link :to="{ name: 'calendar' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-calendar-week"></i>
                             <p>Calendar</p>
                         </router-link>
-                    </li>
+                    </li> -->
 
                     <li class="nav-item">
                         <router-link :to="{ name: 'rooms' }" class="nav-link" active-class="active">
@@ -164,6 +164,7 @@
 <script setup>
 import emptyPhoto from "@assets/images/emptyuser.png";
 import logoImg from "admin-lte/dist/img/AdminLTELogo.png";
+import logo from "@assets/images/logos.png";
 import { useStore } from "vuex";
 import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { MessageModal } from "@func/swal";

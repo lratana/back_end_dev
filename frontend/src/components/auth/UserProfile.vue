@@ -25,34 +25,34 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-md-3">
-
-                        <div class="text-center">
+                        <!-- Remove -->
+                        <!-- <div class="text-center">
                             <img class="profile-user-img img-fluid img-circle" :src="tempPhoto ?? profilePic"
                                 alt="User profile picture" />
                             <input @change="onUpdatePhoto($event)" type="file" class="d-none"
                                 :accept="allowedExtensions.map((ext) => '.' + ext).join(', ')" id="file-input" />
                             <div class="mt-1">
                                 <!-- Upload Button -->
-                                <label :for="'file-input'">
+                        <!-- <label :for="'file-input'">
                                     <a type="button" class="m-1 btn btn-primary btn-sm">
                                         <i class="fas fa-upload"></i>
                                     </a>
-                                </label>
-                                <!-- Delete Button -->
-                                <a type="button" @click="onDeletePhoto()" class="m-1 btn btn-danger btn-sm">
+                                </label> -->
+                        <!-- Delete Button -->
+                        <!-- <a type="button" @click="onDeletePhoto()" class="m-1 btn btn-danger btn-sm">
                                     <i class="fas fa-trash"></i>
-                                </a>
-                                <!-- Reset Button -->
-                                <a type="button" @click="onResetPhoto()" class="m-1 btn btn-secondary btn-sm">
+                                </a> -->
+                        <!-- Reset Button -->
+                        <!-- <a type="button" @click="onResetPhoto()" class="m-1 btn btn-secondary btn-sm">
                                     <i class="fas fa-undo-alt"></i>
-                                </a>
-                                <!-- Save Button (shows only when photo is changed) -->
-                                <a v-if="changedPhoto" type="button" @click="updatePhoto()"
+                                </a> -->
+                        <!-- Save Button (shows only when photo is changed) -->
+                        <!-- <a v-if="changedPhoto" type="button" @click="updatePhoto()"
                                     class="m-1 btn btn-success btn-sm">
                                     <i class="fas fa-check"></i>
-                                </a>
-                            </div>
-                        </div>
+                                </a> -->
+                        <!-- </div> -->
+                        <!-- </div> -->
 
                         <!-- Profile Image -->
                         <div class="card card-primary card-outline">
@@ -61,13 +61,37 @@
                                 <div class="text-center">
                                     <img class="profile-user-img img-fluid img-circle" :src="tempPhoto ?? profilePic"
                                         alt="User profile picture" />
+                                    <input @change="onUpdatePhoto($event)" type="file" class="d-none"
+                                        :accept="allowedExtensions.map((ext) => '.' + ext).join(', ')"
+                                        id="file-input" />
+                                    <div class="mt-1">
+                                        <!-- Upload Button -->
+                                        <label :for="'file-input'">
+                                            <a type="button" class="m-1 btn btn-primary btn-sm">
+                                                <i class="fas fa-upload"></i>
+                                            </a>
+                                        </label>
+                                        <!-- Delete Button -->
+                                        <a type="button" @click="onDeletePhoto()" class="m-1 btn btn-danger btn-sm">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                        <!-- Reset Button -->
+                                        <a type="button" @click="onResetPhoto()" class="m-1 btn btn-secondary btn-sm">
+                                            <i class="fas fa-undo-alt"></i>
+                                        </a>
+                                        <!-- Save Button (shows only when photo is changed) -->
+                                        <a v-if="changedPhoto" type="button" @click="updatePhoto()"
+                                            class="m-1 btn btn-success btn-sm">
+                                            <i class="fas fa-check"></i>
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <h3 class="profile-username text-center">Nina Mcintire</h3>
 
                                 <p class="text-muted text-center">Software Engineer</p>
-
-                                <ul class="list-group list-group-unbordered mb-3">
+                                <!-- Remove -->
+                                <!-- <ul class="list-group list-group-unbordered mb-3">
                                     <li class="list-group-item">
                                         <b>Followers</b> <a class="float-right">1,322</a>
                                     </li>
@@ -77,7 +101,7 @@
                                     <li class="list-group-item">
                                         <b>Friends</b> <a class="float-right">13,287</a>
                                     </li>
-                                </ul>
+                                </ul> -->
 
                                 <!-- <a href="#" class="btn btn-primary btn-block"><b>Follow</b></a> -->
                             </div>

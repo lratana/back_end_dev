@@ -3,7 +3,10 @@
     <div class="login-box">
       <div class="card card-outline card-primary">
         <div class="card-header text-center">
-          <router-link to="/" class="h1">MRM System</router-link>
+          <img class="profile-user-img img-fluid img-circle" :src="logo" alt="User profile picture" />
+        </div>
+        <div class="text-center">
+          <router-link to="/" class="h3">MRM System</router-link>
         </div>
         <div class="card-body">
           <p class="login-box-msg">Sign in to start your session</p>
@@ -59,6 +62,7 @@
 </template>
 
 <script setup>
+import logo from "@assets/images/logos.png";
 import { useRouter } from "vue-router";
 import { reactive } from "vue";
 import { postSignIn } from "@func/api/auth";
