@@ -193,6 +193,7 @@ const router = createRouter({
       components: { default: BookingCalendar, ...includes },
       meta: { guard: true },
     },
+
     {
       path: "/room-status-board",
       name: "roomStatusBoard",
