@@ -343,10 +343,16 @@ class BookingController extends Controller
 
         if (!$this->isAdmin($request)) {
             $query->where('user_id', $request->user()->id);
+
+            // User: sort ថ្ងៃដែលជិតមកដល់មុនគេ
+            return response()->json(
+                $query->orderBy('start_datetime', 'asc')->paginate($perPage)
+            );
         }
 
+        // Admin: អាចទុកថ្មីចុងក្រោយនៅលើ
         return response()->json(
-            $query->orderByDesc('start_datetime')->paginate($perPage)
+            $query->orderBy('start_datetime', 'desc')->paginate($perPage)
         );
     }
 
