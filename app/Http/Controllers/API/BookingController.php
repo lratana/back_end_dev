@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Models\User;
-use App\Models\Booking;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Notifications\BookingStatusNotification;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Requests\Booking\UpdateBookingRequest;
+use App\Models\Booking;
+use App\Models\User;
+use App\Notifications\BookingStatusNotification;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
@@ -68,6 +68,25 @@ class BookingController extends Controller
             ->all();
     }
 
+    private function notifyAdmins(Booking $booking, string $title, string $message): void
+    {
+        $admins = User::query()
+            ->where('level', 'admin')
+            ->where('id', '!=', $booking->user_id)
+            ->get();
+
+        foreach ($admins as $admin) {
+            $admin->notify(new BookingStatusNotification($booking, $title, $message));
+        }
+    }
+
+    private function notifyBookingOwner(Booking $booking, string $title, string $message): void
+    {
+        if ($booking->user) {
+            $booking->user->notify(new BookingStatusNotification($booking, $title, $message));
+        }
+    }
+
     private function makeOccurrencePayload(Booking $booking, Carbon $occurrenceStart, Carbon $occurrenceEnd, bool $generated = false): array
     {
         return [
@@ -85,6 +104,8 @@ class BookingController extends Controller
             'meeting_chairman' => $booking->meeting_chairman,
             'snack_required' => $booking->snack_required,
             'snack_note' => $booking->snack_note,
+            'technician_required' => $booking->technician_required,
+            'technician_note' => $booking->technician_note,
             'status' => $booking->status,
             'room' => $booking->room,
             'user' => $booking->user,
@@ -261,20 +282,51 @@ class BookingController extends Controller
             'room_id' => ['required', 'integer', 'exists:rooms,id'],
             'start_datetime' => ['required', 'date'],
             'end_datetime' => ['required', 'date', 'after:start_datetime'],
+            'ignore_id' => ['nullable', 'integer', 'exists:bookings,id'],
         ]);
 
         $hasConflict = $this->hasConflict(
             $data['room_id'],
             $data['start_datetime'],
-            $data['end_datetime']
+            $data['end_datetime'],
+            $data['ignore_id'] ?? null
         );
 
         return response()->json([
             'room_id' => $data['room_id'],
+            'ignore_id' => $data['ignore_id'] ?? null,
             'available' => !$hasConflict,
             'message' => $hasConflict
                 ? 'Room is already booked for this time'
                 : 'Room is available',
+        ]);
+    }
+
+    public function availableRooms(Request $request)
+    {
+        $data = $request->validate([
+            'start_datetime' => ['required', 'date'],
+            'end_datetime' => ['required', 'date', 'after:start_datetime'],
+            'ignore_id' => ['nullable', 'integer'],
+        ]);
+
+        $rooms = \App\Models\Room::query()
+            ->get()
+            ->filter(function ($room) use ($data) {
+                return !$this->hasConflict(
+                    $room->id,
+                    $data['start_datetime'],
+                    $data['end_datetime'],
+                    $data['ignore_id'] ?? null
+                );
+            })
+            ->values();
+
+        return response()->json([
+            'data' => $rooms,
+            'message' => $rooms->count()
+                ? 'Available rooms fetched successfully'
+                : 'No available rooms found',
         ]);
     }
 
@@ -319,6 +371,8 @@ class BookingController extends Controller
         $data['meeting_chairman'] = $data['meeting_chairman'] ?? null;
         $data['snack_required'] = $data['snack_required'] ?? false;
         $data['snack_note'] = $data['snack_note'] ?? null;
+        $data['technician_required'] = $data['technician_required'] ?? false;
+        $data['technician_note'] = $data['technician_note'] ?? null;
         $data['status'] = 'pending';
 
         if ($this->hasConflict(
@@ -331,21 +385,13 @@ class BookingController extends Controller
             ], 422);
         }
 
-        $booking = Booking::create($data);
-        $booking->load(['room', 'user']);
+        $booking = Booking::create($data)->load(['room', 'user']);
 
-        $admins = User::query()
-            ->where('level', 'admin')
-            ->where('id', '<>', $request->user()->id)
-            ->get();
-
-        foreach ($admins as $admin) {
-            $admin->notify(new BookingStatusNotification(
-                $booking,
-                'New Booking Request',
-                ($booking->user?->name ?? 'A user') . ' submitted a new booking request for room ' . ($booking->room?->name ?? 'N/A') . '.'
-            ));
-        }
+        $this->notifyAdmins(
+            $booking,
+            'New Booking Created',
+            'A new booking has been created and is waiting for approval.'
+        );
 
         return response()->json($booking, 201);
     }
@@ -390,9 +436,18 @@ class BookingController extends Controller
             ], 422);
         }
 
-        $booking->update($data);
+        if (array_key_exists('snack_required', $data) && !$data['snack_required']) {
+            $data['snack_note'] = null;
+        }
 
-        return response()->json($booking->load(['room', 'user']));
+        if (array_key_exists('technician_required', $data) && !$data['technician_required']) {
+            $data['technician_note'] = null;
+        }
+
+        $booking->update($data);
+        $booking->load(['room', 'user']);
+
+        return response()->json($booking);
     }
 
     public function requestCancel(Request $request, Booking $booking)
@@ -419,18 +474,11 @@ class BookingController extends Controller
 
         $booking->load(['room', 'user']);
 
-        $admins = User::query()
-            ->where('level', 'admin')
-            ->where('id', '<>', $request->user()->id)
-            ->get();
-
-        foreach ($admins as $admin) {
-            $admin->notify(new BookingStatusNotification(
-                $booking,
-                'Cancellation Requested',
-                ($booking->user?->name ?? 'A user') . ' requested cancellation for booking in room ' . ($booking->room?->name ?? 'N/A') . '.'
-            ));
-        }
+        $this->notifyAdmins(
+            $booking,
+            'Booking Cancel Request',
+            'A booking cancellation request has been submitted.'
+        );
 
         return response()->json([
             'message' => 'Cancel request submitted successfully',
@@ -473,13 +521,11 @@ class BookingController extends Controller
 
         $booking->load(['room', 'user']);
 
-        if ($booking->user) {
-            $booking->user->notify(new BookingStatusNotification(
-                $booking,
-                'Booking Approved',
-                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been approved.'
-            ));
-        }
+        $this->notifyBookingOwner(
+            $booking,
+            'Booking Approved',
+            'Your booking has been approved successfully.'
+        );
 
         return response()->json([
             'message' => 'Booking approved successfully',
@@ -511,13 +557,11 @@ class BookingController extends Controller
 
         $booking->load(['room', 'user']);
 
-        if ($booking->user) {
-            $booking->user->notify(new BookingStatusNotification(
-                $booking,
-                'Booking Rejected',
-                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been rejected.'
-            ));
-        }
+        $this->notifyBookingOwner(
+            $booking,
+            'Booking Rejected',
+            'Your booking has been rejected.'
+        );
 
         return response()->json([
             'message' => 'Booking rejected successfully',
@@ -549,13 +593,11 @@ class BookingController extends Controller
 
         $booking->load(['room', 'user']);
 
-        if ($booking->user) {
-            $booking->user->notify(new BookingStatusNotification(
-                $booking,
-                'Booking Cancelled',
-                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been cancelled.'
-            ));
-        }
+        $this->notifyBookingOwner(
+            $booking,
+            'Booking Cancelled',
+            'Your booking has been cancelled successfully.'
+        );
 
         return response()->json([
             'message' => 'Booking cancelled successfully',
@@ -587,13 +629,11 @@ class BookingController extends Controller
 
         $booking->load(['room', 'user']);
 
-        if ($booking->user) {
-            $booking->user->notify(new BookingStatusNotification(
-                $booking,
-                'Booking Cancelled by Admin',
-                'Your booking for room ' . ($booking->room?->name ?? 'N/A') . ' has been cancelled by admin.'
-            ));
-        }
+        $this->notifyBookingOwner(
+            $booking,
+            'Booking Cancelled by Admin',
+            'Your booking has been cancelled by admin.'
+        );
 
         return response()->json([
             'message' => 'Booking cancelled successfully by admin',

@@ -37,3 +37,11 @@ export async function apiAdminCancelBooking(id) {
 export async function apiDeleteBooking(id) {
     return await window.axios.delete(`${window.API_URL}/bookings/delete/${id}`);
 }
+
+export async function apiCheckBookingAvailability(params = {}) {
+    return await window.axios.get(`${window.API_URL}/bookings/availability`, { params });
+}
+
+export async function apiGetAvailableRooms(params = {}) {
+    return await window.axios.get(`${window.API_URL}/bookings/available-rooms`, { params });
+}

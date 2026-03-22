@@ -16,29 +16,34 @@ class UpdateBookingRequest extends FormRequest
         return [
             'room_id' => [
                 'sometimes',
+                'required',
                 'integer',
                 'exists:rooms,id',
             ],
 
             'start_datetime' => [
                 'sometimes',
+                'required',
                 'date',
                 'after_or_equal:now',
             ],
 
             'end_datetime' => [
                 'sometimes',
+                'required',
                 'date',
             ],
 
             'recurrence_type' => [
                 'sometimes',
+                'required',
                 'in:none,daily,weekly,monthly',
             ],
 
             'recurrence_days' => [
                 'nullable',
                 'array',
+                'required_if:recurrence_type,weekly',
             ],
 
             'recurrence_days.*' => [
@@ -50,20 +55,24 @@ class UpdateBookingRequest extends FormRequest
                 'nullable',
                 'integer',
                 'min:1',
+                'required_unless:recurrence_type,none',
             ],
 
             'recurrence_until' => [
                 'nullable',
                 'date',
+                'required_unless:recurrence_type,none',
             ],
 
             'meeting_title' => [
+                'sometimes',
                 'nullable',
                 'string',
                 'max:255',
             ],
 
             'meeting_chairman' => [
+                'sometimes',
                 'nullable',
                 'string',
                 'max:255',
@@ -79,8 +88,19 @@ class UpdateBookingRequest extends FormRequest
                 'string',
             ],
 
+            'technician_required' => [
+                'nullable',
+                'boolean',
+            ],
+
+            'technician_note' => [
+                'nullable',
+                'string',
+            ],
+
             'status' => [
                 'sometimes',
+                'required',
                 'in:pending,approved,rejected,cancel_requested,cancelled,completed',
             ],
         ];
@@ -89,20 +109,40 @@ class UpdateBookingRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'room_id.required' => 'Room is required.',
             'room_id.exists' => 'Selected room does not exist.',
+
+            'start_datetime.required' => 'Start datetime is required.',
             'start_datetime.date' => 'Start datetime must be a valid date.',
             'start_datetime.after_or_equal' => 'Start datetime cannot be in the past.',
+
+            'end_datetime.required' => 'End datetime is required.',
             'end_datetime.date' => 'End datetime must be a valid date.',
+
+            'recurrence_type.required' => 'Recurrence type is required.',
             'recurrence_type.in' => 'Recurrence type must be none, daily, weekly, or monthly.',
+
+            'recurrence_days.required_if' => 'Weekly recurrence requires at least one recurrence day.',
             'recurrence_days.array' => 'Recurrence days must be an array.',
             'recurrence_days.*.in' => 'Each recurrence day must be one of: mon, tue, wed, thu, fri, sat, sun.',
+
+            'recurrence_period.required_unless' => 'Recurrence period is required for recurring bookings.',
             'recurrence_period.integer' => 'Recurrence period must be a number.',
             'recurrence_period.min' => 'Recurrence period must be at least 1.',
+
+            'recurrence_until.required_unless' => 'Recurrence until is required for recurring bookings.',
             'recurrence_until.date' => 'Recurrence until must be a valid date.',
+
             'meeting_title.string' => 'Meeting title must be text.',
             'meeting_chairman.string' => 'Meeting chairman must be text.',
+
             'snack_required.boolean' => 'Snack required must be true or false.',
             'snack_note.string' => 'Snack note must be text.',
+
+            'technician_required.boolean' => 'Technician required must be true or false.',
+            'technician_note.string' => 'Technician note must be text.',
+
+            'status.required' => 'Status is required.',
             'status.in' => 'Invalid booking status.',
         ];
     }
@@ -128,8 +168,30 @@ class UpdateBookingRequest extends FormRequest
                 }
             }
 
-            if ($type === 'weekly' && $this->exists('recurrence_days') && empty($days)) {
+            if ($type === 'weekly' && empty($days)) {
                 $validator->errors()->add('recurrence_days', 'Weekly recurrence requires at least one recurrence day.');
+            }
+
+            if ($type === 'none') {
+                if ($this->filled('recurrence_days')) {
+                    $validator->errors()->add('recurrence_days', 'Recurrence days must be empty when recurrence type is none.');
+                }
+
+                if ($this->filled('recurrence_period')) {
+                    $validator->errors()->add('recurrence_period', 'Recurrence period must be empty when recurrence type is none.');
+                }
+
+                if ($this->filled('recurrence_until')) {
+                    $validator->errors()->add('recurrence_until', 'Recurrence until must be empty when recurrence type is none.');
+                }
+            }
+
+            if ($this->boolean('snack_required') && $this->exists('snack_required') && !filled($this->input('snack_note'))) {
+                $validator->errors()->add('snack_note', 'Snack note is required when snack is required.');
+            }
+
+            if ($this->boolean('technician_required') && $this->exists('technician_required') && !filled($this->input('technician_note'))) {
+                $validator->errors()->add('technician_note', 'Technician note is required when technician is required.');
             }
         });
     }

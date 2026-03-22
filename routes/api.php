@@ -127,6 +127,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update/{booking}', [BookingController::class, 'update']);
 
         Route::get('/availability', [BookingController::class, 'availability']);
+        // Get all available rooms for selected datetime range
+        Route::get('/available-rooms', [BookingController::class, 'availableRooms']);
         Route::get('/calendar', [BookingController::class, 'calendar']);
 
         Route::put('/request-cancel/{booking}', [BookingController::class, 'requestCancel']);

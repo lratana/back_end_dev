@@ -24,6 +24,9 @@ class Booking extends Model
         'snack_required',
         'snack_note',
 
+        'technician_required',
+        'technician_note',
+
         'status',
     ];
 
@@ -36,6 +39,7 @@ class Booking extends Model
         'recurrence_period' => 'integer',
 
         'snack_required' => 'boolean',
+        'technician_required' => 'boolean',
     ];
 
     public function room()

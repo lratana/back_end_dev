@@ -129,18 +129,20 @@
 
                         <div class="form-group col-md-6">
                             <label>Recurrence Period</label>
-                            <input v-model="bookingForm.recurrence_period" type="number" min="1" class="form-control" />
+                            <input v-model="bookingForm.recurrence_period" type="number" min="1" class="form-control"
+                                :disabled="isRecurrenceNone" />
                         </div>
 
                         <div class="form-group col-md-6">
                             <label>Recurrence Until</label>
-                            <input v-model="bookingForm.recurrence_until" type="date" class="form-control" />
+                            <input v-model="bookingForm.recurrence_until" type="date" class="form-control"
+                                :disabled="isRecurrenceNone" />
                         </div>
 
                         <div class="form-group col-md-12">
                             <label>Recurrence Days</label>
                             <input v-model="bookingForm.recurrence_days" type="text" class="form-control"
-                                placeholder="mon,tue or wed,fri" />
+                                placeholder="mon,tue or wed,fri" :disabled="isRecurrenceNone" />
                             <small class="text-muted">Use: mon, tue, wed, thu, fri, sat, sun</small>
                         </div>
 
@@ -157,8 +159,23 @@
                             <input v-model="bookingForm.snack_note" type="text" class="form-control"
                                 placeholder="Snack detail" :disabled="!bookingForm.snack_required" />
                         </div>
+
+                        <div class="form-group col-md-4">
+                            <label>Technician Required</label>
+                            <select v-model="bookingForm.technician_required" class="form-control">
+                                <option :value="false">No</option>
+                                <option :value="true">Yes</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-8">
+                            <label>Technician Note</label>
+                            <input v-model="bookingForm.technician_note" type="text" class="form-control"
+                                placeholder="Technician detail" :disabled="!bookingForm.technician_required" />
+                        </div>
                     </div>
                 </div>
+
                 <div class="modal-footer justify-content-between">
                     <button class="btn btn-default" type="button" @click="hideCreateModal">Close</button>
                     <button class="btn btn-primary" type="button" :disabled="saving" @click="submitCreateBooking">
@@ -234,6 +251,14 @@
                                     <th>Snack Note</th>
                                     <td>{{ selected.snack_note }}</td>
                                 </tr>
+                                <tr>
+                                    <th>Technician Required</th>
+                                    <td>{{ selected.technician_required ? "Yes" : "No" }}</td>
+                                </tr>
+                                <tr v-if="selected.technician_note">
+                                    <th>Technician Note</th>
+                                    <td>{{ selected.technician_note }}</td>
+                                </tr>
                                 <tr v-if="selected.recurrence_type">
                                     <th>Recurrence Type</th>
                                     <td>{{ selected.recurrence_type }}</td>
@@ -298,7 +323,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -316,7 +341,6 @@ import {
     apiAdminCancelBooking,
     apiDeleteBooking,
 } from "@func/api/calendar";
-
 import { apiGetRooms } from "@func/api/room";
 
 const calendarRef = ref(null);
@@ -351,6 +375,8 @@ const bookingForm = reactive({
     meeting_chairman: "",
     snack_required: false,
     snack_note: "",
+    technician_required: false,
+    technician_note: "",
 });
 
 const currentUser = computed(() => {
@@ -362,6 +388,32 @@ const currentUser = computed(() => {
 });
 
 const isAdmin = computed(() => currentUser.value?.level === "admin");
+const isRecurrenceNone = computed(() => bookingForm.recurrence_type === "none");
+
+watch(
+    () => bookingForm.recurrence_type,
+    (value) => {
+        if (value === "none") {
+            bookingForm.recurrence_days = "";
+            bookingForm.recurrence_period = "";
+            bookingForm.recurrence_until = "";
+        }
+    }
+);
+
+watch(
+    () => bookingForm.snack_required,
+    (value) => {
+        if (!value) bookingForm.snack_note = "";
+    }
+);
+
+watch(
+    () => bookingForm.technician_required,
+    (value) => {
+        if (!value) bookingForm.technician_note = "";
+    }
+);
 
 const filteredRooms = computed(() => {
     const keyword = roomKeyword.value.trim().toLowerCase();
@@ -406,11 +458,35 @@ function hideDetailModal() {
 }
 
 function normalizeDt(dt) {
-    return dt ? String(dt).replace(" ", "T") : null;
+    if (!dt) return null;
+
+    if (dt instanceof Date) {
+        const yyyy = dt.getFullYear();
+        const mm = String(dt.getMonth() + 1).padStart(2, "0");
+        const dd = String(dt.getDate()).padStart(2, "0");
+        const hh = String(dt.getHours()).padStart(2, "0");
+        const ii = String(dt.getMinutes()).padStart(2, "0");
+        const ss = String(dt.getSeconds()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}T${hh}:${ii}:${ss}`;
+    }
+
+    return String(dt).replace(" ", "T");
 }
 
 function toMysqlDatetime(value) {
-    return value ? String(value).replace("T", " ") : null;
+    if (!value) return null;
+
+    if (value instanceof Date) {
+        const yyyy = value.getFullYear();
+        const mm = String(value.getMonth() + 1).padStart(2, "0");
+        const dd = String(value.getDate()).padStart(2, "0");
+        const hh = String(value.getHours()).padStart(2, "0");
+        const ii = String(value.getMinutes()).padStart(2, "0");
+        const ss = String(value.getSeconds()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd} ${hh}:${ii}:${ss}`;
+    }
+
+    return String(value).replace("T", " ");
 }
 
 function fmt(dt) {
@@ -421,7 +497,6 @@ function fmt(dt) {
 function fmtDateOnly(dt) {
     if (!dt) return "-";
     return formatFullDateTime(dt).split(",")[0];
-    // example: "Mar 19"
 }
 
 function formatForInput(dt) {
@@ -498,7 +573,7 @@ function canConfirmCancel(booking) {
 }
 
 function canAdminDirectCancel(booking) {
-    return !!booking && isAdmin.value && !isPastBooking(booking) && ["pending", "approved"].includes(booking.status);
+    return !!booking && isAdmin.value && !isPastBooking(booking) && ["pending", "approved", "cancel_requested"].includes(booking.status);
 }
 
 function canDelete(booking) {
@@ -526,6 +601,8 @@ function resetForm() {
     bookingForm.meeting_chairman = "";
     bookingForm.snack_required = false;
     bookingForm.snack_note = "";
+    bookingForm.technician_required = false;
+    bookingForm.technician_note = "";
     formError.value = "";
 
     roomKeyword.value = "";
@@ -536,8 +613,6 @@ function resetForm() {
 async function fetchEvents(info, successCallback, failureCallback) {
     const startStr = info.startStr;
     const endStr = info.endStr;
-
-    if (lastRange.value.start === startStr && lastRange.value.end === endStr) return;
 
     lastRange.value = { start: startStr, end: endStr };
     loading.value = true;
@@ -574,7 +649,6 @@ async function fetchEvents(info, successCallback, failureCallback) {
 function refetch() {
     const api = calendarRef.value?.getApi?.();
     if (!api) return;
-    lastRange.value = { start: "", end: "" };
     api.refetchEvents();
 }
 
@@ -589,6 +663,38 @@ async function onDateSelect(selectInfo) {
 
     bookingForm.start_datetime = formatForInput(selectInfo.start);
     bookingForm.end_datetime = formatForInput(selectInfo.end);
+
+    showCreateModal();
+}
+
+async function onDateClick(info) {
+    const clickedDate = new Date(info.date);
+
+    if (Number.isNaN(clickedDate.getTime())) {
+        error.value = "Invalid selected date.";
+        return;
+    }
+
+    if (clickedDate < new Date()) {
+        error.value = "You cannot create a booking in the past.";
+        return;
+    }
+
+    resetForm();
+    await loadRooms();
+
+    const start = new Date(clickedDate);
+    const end = new Date(clickedDate);
+
+    if (info.view.type === "dayGridMonth" || info.allDay) {
+        start.setHours(8, 0, 0, 0);
+        end.setHours(9, 0, 0, 0);
+    } else {
+        end.setHours(end.getHours() + 1);
+    }
+
+    bookingForm.start_datetime = formatForInput(start);
+    bookingForm.end_datetime = formatForInput(end);
 
     showCreateModal();
 }
@@ -637,6 +743,16 @@ async function submitCreateBooking() {
         return;
     }
 
+    if (bookingForm.snack_required && !String(bookingForm.snack_note || "").trim()) {
+        formError.value = "Snack note is required.";
+        return;
+    }
+
+    if (bookingForm.technician_required && !String(bookingForm.technician_note || "").trim()) {
+        formError.value = "Technician note is required.";
+        return;
+    }
+
     saving.value = true;
 
     try {
@@ -652,6 +768,8 @@ async function submitCreateBooking() {
             meeting_chairman: bookingForm.meeting_chairman || null,
             snack_required: !!bookingForm.snack_required,
             snack_note: bookingForm.snack_required ? (bookingForm.snack_note || null) : null,
+            technician_required: !!bookingForm.technician_required,
+            technician_note: bookingForm.technician_required ? (bookingForm.technician_note || null) : null,
         });
 
         hideCreateModal();
@@ -708,6 +826,8 @@ async function eventDrop(info) {
             meeting_chairman: booking.meeting_chairman ?? null,
             snack_required: !!booking.snack_required,
             snack_note: booking.snack_note ?? null,
+            technician_required: !!booking.technician_required,
+            technician_note: booking.technician_note ?? null,
         });
 
         await reloadBookingAfterAction(booking.id);
@@ -748,6 +868,8 @@ async function eventResize(info) {
             meeting_chairman: booking.meeting_chairman ?? null,
             snack_required: !!booking.snack_required,
             snack_note: booking.snack_note ?? null,
+            technician_required: !!booking.technician_required,
+            technician_note: booking.technician_note ?? null,
         });
 
         await reloadBookingAfterAction(booking.id);
@@ -878,6 +1000,7 @@ const calendarOptions = {
     eventTimeFormat: { hour: "2-digit", minute: "2-digit", hour12: false },
     events: fetchEvents,
     select: onDateSelect,
+    dateClick: onDateClick,
     eventClick,
     eventDrop,
     eventResize,
