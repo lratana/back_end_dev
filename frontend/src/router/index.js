@@ -17,7 +17,7 @@ import BookingCalendar from '@/components/pages/BookingCalendar.vue';
 import RoomStatusBoard from '@/components/pages/RoomStatusBoard.vue';
 import Notifications from '@/components/pages/Notifications.vue';
 import NotificationBookingDetail from '@/components/pages/NotificationBookingDetail.vue';
-
+import BookingReport from '@/components/pages/BookingReport.vue';
 import { createRouter, createWebHistory } from 'vue-router'
 import Navbar from '@com/includes/Navbar.vue';
 import Footer from '@com/includes/Footer.vue';
@@ -198,6 +198,12 @@ const router = createRouter({
       path: "/room-status-board",
       name: "roomStatusBoard",
       components: { default: RoomStatusBoard, ...includes },
+      meta: { guard: true },
+    },
+    {
+      path: "/booking-reports",
+      name: "booking-reports",
+      components: { default: BookingReport, ...includes },
       meta: { guard: true },
     }
 

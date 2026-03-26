@@ -64,35 +64,53 @@
                         {{ formError }}
                     </div>
 
+                    <div v-if="availabilityMessage" class="alert" :class="availabilityAlertClass">
+                        {{ availabilityMessage }}
+                    </div>
+
                     <div class="form-row">
-                        <div class="form-group col-md-6 position-relative">
+                        <div class="form-group col-md-6">
+                            <label>Start <span class="text-danger">*</span></label>
+                            <input v-model="bookingForm.start_datetime" type="datetime-local" class="form-control" />
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label>End <span class="text-danger">*</span></label>
+                            <input v-model="bookingForm.end_datetime" type="datetime-local" class="form-control" />
+                        </div>
+
+                        <div class="col-md-12 mb-2 d-flex flex-wrap align-items-center" style="gap:8px;">
+                            <button type="button" class="btn btn-outline-info btn-sm"
+                                :disabled="checkingAvailability || !canCheckAvailability" @click="loadAvailableRooms">
+                                <i class="fas fa-search mr-1" :class="{ 'fa-spin': checkingAvailability }"></i>
+                                {{ checkingAvailability ? "Checking..." : "Refresh Available Rooms" }}
+                            </button>
+
+                            <small class="text-muted">
+                                ជ្រើសថ្ងៃ/ម៉ោងរួច ប្រព័ន្ធនឹងស្វែងរកបន្ទប់ទំនេរ auto
+                            </small>
+                        </div>
+
+                        <div class="form-group col-md-6">
                             <label>Room <span class="text-danger">*</span></label>
-
-                            <input v-model="roomKeyword" type="text" class="form-control" placeholder="Search room..."
-                                @focus="showRoomDropdown = true" />
-
-                            <div v-if="selectedRoom" class="mt-2">
-                                <span class="badge badge-primary p-2">
-                                    {{ selectedRoom.name }}
-                                    <button type="button" class="btn btn-sm text-white ml-2 p-0 border-0 bg-transparent"
-                                        @click="clearSelectedRoom">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </span>
-                            </div>
-
-                            <div v-if="showRoomDropdown && filteredRooms.length"
-                                class="card mt-1 position-absolute w-100 shadow-sm room-dropdown">
-                                <div class="list-group list-group-flush">
-                                    <button v-for="room in filteredRooms" :key="room.id" type="button"
-                                        class="list-group-item list-group-item-action text-left"
-                                        @click="selectRoom(room)">
-                                        {{ room.name }}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <small class="text-muted d-block mt-1">Search and select one room</small>
+                            <select class="form-control" v-model="bookingForm.room_id"
+                                :disabled="!canSelectRoom || checkingAvailability">
+                                <option value="" disabled>
+                                    {{
+                                        checkingAvailability
+                                            ? "Loading available rooms..."
+                                            : availableRooms.length
+                                                ? "Select available room..."
+                                                : "No available room"
+                                    }}
+                                </option>
+                                <option v-for="r in availableRooms" :key="r.id" :value="String(r.id)">
+                                    {{ r.name }} (Capacity: {{ r.capacity ?? "-" }})
+                                </option>
+                            </select>
+                            <small class="text-muted">
+                                បង្ហាញតែបន្ទប់ទំនេរ តាមថ្ងៃ/ម៉ោងដែលបានជ្រើស
+                            </small>
                         </div>
 
                         <div class="form-group col-md-6">
@@ -103,16 +121,6 @@
                                 <option value="weekly">weekly</option>
                                 <option value="monthly">monthly</option>
                             </select>
-                        </div>
-
-                        <div class="form-group col-md-6">
-                            <label>Start <span class="text-danger">*</span></label>
-                            <input v-model="bookingForm.start_datetime" type="datetime-local" class="form-control" />
-                        </div>
-
-                        <div class="form-group col-md-6">
-                            <label>End <span class="text-danger">*</span></label>
-                            <input v-model="bookingForm.end_datetime" type="datetime-local" class="form-control" />
                         </div>
 
                         <div class="form-group col-md-6">
@@ -329,8 +337,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { formatFullDateTime } from "@func/datetime";
+import { apiGetCalendar } from "@/functions/api/calendar";
 import {
-    apiGetCalendar,
     apiCreateBooking,
     apiUpdateBooking,
     apiGetBooking,
@@ -340,8 +348,8 @@ import {
     apiConfirmCancelBooking,
     apiAdminCancelBooking,
     apiDeleteBooking,
-} from "@func/api/calendar";
-import { apiGetRooms } from "@func/api/room";
+    apiGetAvailableRooms,
+} from "@func/api/booking";
 
 const calendarRef = ref(null);
 const createModal = ref(null);
@@ -351,17 +359,17 @@ const loading = ref(false);
 const saving = ref(false);
 const actionLoading = ref(false);
 const detailLoading = ref(false);
+const checkingAvailability = ref(false);
 
 const error = ref("");
 const formError = ref("");
+const availabilityMessage = ref("");
 
 const selected = ref(null);
-const rooms = ref([]);
+const availableRooms = ref([]);
 const lastRange = ref({ start: "", end: "" });
 
-const roomKeyword = ref("");
-const selectedRoom = ref(null);
-const showRoomDropdown = ref(false);
+let availabilityTimer = null;
 
 const bookingForm = reactive({
     room_id: "",
@@ -390,6 +398,20 @@ const currentUser = computed(() => {
 const isAdmin = computed(() => currentUser.value?.level === "admin");
 const isRecurrenceNone = computed(() => bookingForm.recurrence_type === "none");
 
+const canCheckAvailability = computed(() => {
+    return !!bookingForm.start_datetime && !!bookingForm.end_datetime;
+});
+
+const canSelectRoom = computed(() => {
+    return canCheckAvailability.value && availableRooms.value.length > 0;
+});
+
+const availabilityAlertClass = computed(() => {
+    if (availableRooms.value.length > 0) return "alert-info";
+    if (availabilityMessage.value) return "alert-warning";
+    return "alert-info";
+});
+
 watch(
     () => bookingForm.recurrence_type,
     (value) => {
@@ -415,29 +437,24 @@ watch(
     }
 );
 
-const filteredRooms = computed(() => {
-    const keyword = roomKeyword.value.trim().toLowerCase();
+watch(
+    () => [bookingForm.start_datetime, bookingForm.end_datetime],
+    ([newStart, newEnd], [oldStart, oldEnd]) => {
+        if (newStart !== oldStart || newEnd !== oldEnd) {
+            bookingForm.room_id = "";
+            availableRooms.value = [];
+            availabilityMessage.value = "";
 
-    if (!keyword) return rooms.value.slice(0, 10);
+            if (availabilityTimer) clearTimeout(availabilityTimer);
 
-    return rooms.value
-        .filter((room) => String(room.name || "").toLowerCase().includes(keyword))
-        .slice(0, 10);
-});
-
-function selectRoom(room) {
-    selectedRoom.value = room;
-    bookingForm.room_id = String(room.id);
-    roomKeyword.value = room.name;
-    showRoomDropdown.value = false;
-}
-
-function clearSelectedRoom() {
-    selectedRoom.value = null;
-    bookingForm.room_id = "";
-    roomKeyword.value = "";
-    showRoomDropdown.value = false;
-}
+            if (newStart && newEnd) {
+                availabilityTimer = setTimeout(() => {
+                    loadAvailableRooms(true);
+                }, 500);
+            }
+        }
+    }
+);
 
 function showCreateModal() {
     if (window.$ && createModal.value) window.$(createModal.value).modal("show");
@@ -536,13 +553,20 @@ function isPastBooking(booking) {
 
 function statusBadge(status) {
     switch (status) {
-        case "pending": return "badge-warning";
-        case "approved": return "badge-success";
-        case "rejected": return "badge-danger";
-        case "cancel_requested": return "badge-info";
-        case "cancelled": return "badge-secondary";
-        case "completed": return "badge-primary";
-        default: return "badge-dark";
+        case "pending":
+            return "badge-warning";
+        case "approved":
+            return "badge-success";
+        case "rejected":
+            return "badge-danger";
+        case "cancel_requested":
+            return "badge-info";
+        case "cancelled":
+            return "badge-secondary";
+        case "completed":
+            return "badge-primary";
+        default:
+            return "badge-dark";
     }
 }
 
@@ -577,16 +601,18 @@ function canAdminDirectCancel(booking) {
 }
 
 function canDelete(booking) {
-    return !!booking && isAdmin.value;
-}
+    if (!booking) return false;
 
-async function loadRooms() {
-    try {
-        const res = await apiGetRooms({ per_page: 100 });
-        rooms.value = res?.data?.data ?? res?.data ?? [];
-    } catch (e) {
-        console.error(e);
+    if (isAdmin.value) return true;
+
+    if (isPastBooking(booking)) return false;
+
+    const currentUserId = currentUser.value?.id;
+    if (!currentUserId || Number(booking.user_id) !== Number(currentUserId)) {
+        return false;
     }
+
+    return booking.status === "pending";
 }
 
 function resetForm() {
@@ -604,10 +630,77 @@ function resetForm() {
     bookingForm.technician_required = false;
     bookingForm.technician_note = "";
     formError.value = "";
+    availableRooms.value = [];
+    availabilityMessage.value = "";
+}
 
-    roomKeyword.value = "";
-    selectedRoom.value = null;
-    showRoomDropdown.value = false;
+async function loadAvailableRooms(silent = false, preferredRoomId = null) {
+    if (!silent) {
+        formError.value = "";
+    }
+
+    availabilityMessage.value = "";
+    availableRooms.value = [];
+    bookingForm.room_id = "";
+
+    if (!bookingForm.start_datetime || !bookingForm.end_datetime) {
+        if (!silent) {
+            formError.value = "Please select start datetime and end datetime first.";
+        }
+        return;
+    }
+
+    const start = new Date(normalizeDt(bookingForm.start_datetime));
+    const end = new Date(normalizeDt(bookingForm.end_datetime));
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        if (!silent) {
+            formError.value = "Invalid start or end datetime.";
+        }
+        return;
+    }
+
+    if (end <= start) {
+        if (!silent) {
+            formError.value = "End datetime must be after start datetime.";
+        }
+        return;
+    }
+
+    checkingAvailability.value = true;
+
+    try {
+        const res = await apiGetAvailableRooms({
+            start_datetime: toMysqlDatetime(bookingForm.start_datetime),
+            end_datetime: toMysqlDatetime(bookingForm.end_datetime),
+        });
+
+        availableRooms.value = res.data?.data ?? [];
+
+        if (availableRooms.value.length) {
+            availabilityMessage.value = `មានបន្ទប់ទំនេរ ${availableRooms.value.length} បន្ទប់។ សូមជ្រើសរើសបន្ទប់។`;
+
+            if (preferredRoomId) {
+                const matched = availableRooms.value.find(
+                    (r) => Number(r.id) === Number(preferredRoomId)
+                );
+                if (matched) {
+                    bookingForm.room_id = String(matched.id);
+                }
+            }
+        } else {
+            availabilityMessage.value = "មិនមានបន្ទប់ទំនេរ សម្រាប់ថ្ងៃ និងម៉ោងដែលបានជ្រើសទេ។";
+        }
+    } catch (e) {
+        if (!silent) {
+            formError.value =
+                e?.response?.data?.message ||
+                e?.message ||
+                "Failed to check available rooms.";
+        }
+    } finally {
+        checkingAvailability.value = false;
+    }
 }
 
 async function fetchEvents(info, successCallback, failureCallback) {
@@ -659,7 +752,6 @@ async function onDateSelect(selectInfo) {
     }
 
     resetForm();
-    await loadRooms();
 
     bookingForm.start_datetime = formatForInput(selectInfo.start);
     bookingForm.end_datetime = formatForInput(selectInfo.end);
@@ -681,7 +773,6 @@ async function onDateClick(info) {
     }
 
     resetForm();
-    await loadRooms();
 
     const start = new Date(clickedDate);
     const end = new Date(clickedDate);
@@ -703,7 +794,7 @@ async function submitCreateBooking() {
     formError.value = "";
 
     if (!bookingForm.room_id) {
-        formError.value = "Please select room";
+        formError.value = "Please select available room";
         return;
     }
 
@@ -975,9 +1066,7 @@ async function onDeleteBooking(booking) {
     }
 }
 
-onMounted(async () => {
-    await loadRooms();
-});
+onMounted(async () => { });
 
 const calendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -1012,10 +1101,6 @@ const calendarOptions = {
     background: #fff;
     border-radius: 10px;
     overflow: hidden;
-}
-
-.room-dropdown {
-    z-index: 1055;
 }
 
 .calendar-legend {

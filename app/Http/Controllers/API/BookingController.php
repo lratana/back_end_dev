@@ -344,18 +344,17 @@ class BookingController extends Controller
         if (!$this->isAdmin($request)) {
             $query->where('user_id', $request->user()->id);
 
-            // User: sort ថ្ងៃដែលជិតមកដល់មុនគេ
+            // User: booking ជិតដល់ថ្ងៃមុនគេ
             return response()->json(
                 $query->orderBy('start_datetime', 'asc')->paginate($perPage)
             );
         }
 
-        // Admin: អាចទុកថ្មីចុងក្រោយនៅលើ
+        // Admin: booking ថ្ងៃក្រោយ/ថ្មីជាងនៅលើ
         return response()->json(
             $query->orderBy('start_datetime', 'desc')->paginate($perPage)
         );
     }
-
     public function show(Request $request, Booking $booking)
     {
         if (!$this->isAdmin($request) && $booking->user_id !== $request->user()->id) {
@@ -649,8 +648,35 @@ class BookingController extends Controller
 
     public function destroy(Request $request, Booking $booking)
     {
-        if (!$this->isAdmin($request)) {
+        $isAdmin = $this->isAdmin($request);
+        $isOwner = $booking->user_id === $request->user()->id;
+
+        // Admin delete បានគ្រប់ booking
+        if ($isAdmin) {
+            $booking->delete();
+
+            return response()->json([
+                'message' => 'Booking deleted successfully'
+            ]);
+        }
+
+        // User មិនមែនម្ចាស់ booking
+        if (!$isOwner) {
             return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Past booking មិនអោយ delete
+        if ($this->isPastBooking($booking)) {
+            return response()->json([
+                'message' => 'Past bookings cannot be deleted'
+            ], 422);
+        }
+
+        // User delete បានតែ booking ដែល admin មិនទាន់ approve
+        if ($booking->status !== 'pending') {
+            return response()->json([
+                'message' => 'You can only delete pending bookings'
+            ], 422);
         }
 
         $booking->delete();

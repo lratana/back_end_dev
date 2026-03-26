@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\BackupController;
 use App\Http\Controllers\API\BookingController;
+use App\Http\Controllers\API\BookingReportController;
 use App\Http\Controllers\API\ChatController;
 use App\Http\Controllers\API\ChatMemberController;
 use App\Http\Controllers\API\ChatMessageController;
@@ -139,7 +140,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin-cancel/{booking}', [BookingController::class, 'adminCancel']);
         Route::delete('/delete/{booking}', [BookingController::class, 'destroy']);
     });
-
+    // Booking Reports
+    Route::prefix('booking-reports')->group(function () {
+        Route::get('/', [BookingReportController::class, 'index']);
+    });
     // Notifications
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);

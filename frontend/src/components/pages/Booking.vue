@@ -460,6 +460,18 @@ const filteredBookings = computed(() => {
         list = list.filter((b) => String(b.room_id) === String(filters.room_id));
     }
 
+    list.sort((a, b) => {
+        if (isAdmin.value) {
+            const aCreated = new Date(normalizeDt(a.created_at || a.start_datetime)).getTime();
+            const bCreated = new Date(normalizeDt(b.created_at || b.start_datetime)).getTime();
+            return bCreated - aCreated;
+        }
+
+        const aStart = new Date(normalizeDt(a.start_datetime)).getTime();
+        const bStart = new Date(normalizeDt(b.start_datetime)).getTime();
+        return aStart - bStart;
+    });
+
     return list;
 });
 
@@ -741,8 +753,18 @@ function canAdminDirectCancel(booking) {
 }
 
 function canDelete(booking) {
-    if (!booking || !isAdmin.value) return false;
-    return true;
+    if (!booking) return false;
+
+    if (isAdmin.value) return true;
+
+    if (isPastBooking(booking)) return false;
+
+    const currentUserId = currentUser.value?.id;
+    if (!currentUserId || Number(booking.user_id) !== Number(currentUserId)) {
+        return false;
+    }
+
+    return booking.status === "pending";
 }
 
 async function loadRooms() {
@@ -1252,7 +1274,12 @@ async function deleteBooking(id) {
 }
 
 function onBookingCreate(b) {
-    bookings.value.unshift(b);
+    const exists = bookings.value.some((x) => x.id === b.id);
+    if (exists) {
+        bookings.value = bookings.value.map((x) => (x.id === b.id ? b : x));
+    } else {
+        bookings.value = [...bookings.value, b];
+    }
 }
 
 function onBookingUpdate(b) {
@@ -1260,7 +1287,11 @@ function onBookingUpdate(b) {
     if (exists) {
         bookings.value = bookings.value.map((x) => (x.id === b.id ? b : x));
     } else {
-        bookings.value.unshift(b);
+        bookings.value = [...bookings.value, b];
+    }
+
+    if (selectedBooking.value?.id === b.id) {
+        selectedBooking.value = b;
     }
 }
 

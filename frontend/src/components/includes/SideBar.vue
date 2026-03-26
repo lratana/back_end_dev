@@ -56,6 +56,12 @@
                             <p>Bookings Calendar</p>
                         </router-link>
                     </li>
+                    <li class="nav-item">
+                        <router-link :to="{ name: 'booking-reports' }" class="nav-link" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <p>Booking Reports</p>
+                        </router-link>
+                    </li>
                     <!-- Remove -->
                     <!-- <li class="nav-item">
                         <router-link :to="{ name: 'calendar' }" class="nav-link" active-class="active">
