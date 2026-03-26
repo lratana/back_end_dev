@@ -90,14 +90,35 @@
                                 </select>
                             </div>
 
-                            <div class="col-lg-4 col-md-6 form-group" v-if="isAdmin">
+                            <div class="col-lg-4 col-md-6 form-group position-relative" v-if="isAdmin">
                                 <label class="font-weight-semibold">User</label>
-                                <select class="form-control" v-model="filters.user_id">
-                                    <option value="">All Users</option>
-                                    <option v-for="u in users" :key="u.id" :value="String(u.id)">
-                                        {{ u.name }} ({{ u.email }})
-                                    </option>
-                                </select>
+
+                                <div class="chip-select-box" @click="focusUserInput">
+                                    <span v-if="selectedUserObject" class="chip-item">
+                                        {{ selectedUserObject.name }} ({{ selectedUserObject.email }})
+                                        <button type="button" class="chip-remove" @click.stop="clearSelectedUser">
+                                            ×
+                                        </button>
+                                    </span>
+
+                                    <input v-if="!selectedUserObject" ref="userInputRef" v-model="userKeyword"
+                                        type="text" class="chip-input" placeholder="Search user..."
+                                        @focus="showUserDropdown = true" @input="showUserDropdown = true"
+                                        @keydown.esc="showUserDropdown = false" />
+                                </div>
+
+                                <div v-if="showUserDropdown && filteredUsers.length && !selectedUserObject"
+                                    class="chip-dropdown">
+                                    <button v-for="u in filteredUsers" :key="u.id" type="button"
+                                        class="chip-dropdown-item" @click="selectUser(u)">
+                                        <div class="font-weight-semibold">{{ u.name }}</div>
+                                        <small class="text-muted">{{ u.email }}</small>
+                                    </button>
+                                </div>
+
+                                <small class="text-muted d-block mt-1">
+                                    វាយ search user រួចជ្រើសរើសពី list
+                                </small>
                             </div>
                         </div>
 
@@ -251,7 +272,7 @@
 </template>
 
 <script setup>
-import { computed, h, onMounted, reactive, ref } from "vue";
+import { computed, h, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useStore } from "vuex";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -286,6 +307,10 @@ const report = ref(null);
 const users = ref([]);
 const detailSearch = ref("");
 
+const userInputRef = ref(null);
+const userKeyword = ref("");
+const showUserDropdown = ref(false);
+
 const currentUser = computed(() => store.state.user || null);
 const isAdmin = computed(() => currentUser.value?.level === "admin");
 
@@ -315,10 +340,29 @@ const currentPeriodLabel = computed(() => {
     return `Yearly Report - ${filters.year}`;
 });
 
+const selectedUserObject = computed(() => {
+    if (!filters.user_id) return null;
+    return users.value.find((u) => String(u.id) === String(filters.user_id)) || null;
+});
+
 const selectedUserLabel = computed(() => {
     if (!filters.user_id) return "All Users";
     const found = users.value.find((u) => String(u.id) === String(filters.user_id));
     return found ? `${found.name} (${found.email})` : filters.user_id;
+});
+
+const filteredUsers = computed(() => {
+    const keyword = String(userKeyword.value || "").trim().toLowerCase();
+    const rows = users.value || [];
+
+    if (!keyword) return rows.slice(0, 20);
+
+    return rows
+        .filter((u) => {
+            const text = `${u.name || ""} ${u.email || ""}`.toLowerCase();
+            return text.includes(keyword);
+        })
+        .slice(0, 20);
 });
 
 const today = new Date();
@@ -438,6 +482,25 @@ function statusBadge(status) {
     }
 }
 
+function focusUserInput() {
+    nextTick(() => {
+        userInputRef.value?.focus();
+    });
+}
+
+function selectUser(user) {
+    filters.user_id = String(user.id);
+    userKeyword.value = "";
+    showUserDropdown.value = false;
+}
+
+function clearSelectedUser() {
+    filters.user_id = "";
+    userKeyword.value = "";
+    showUserDropdown.value = false;
+    focusUserInput();
+}
+
 function resetFilters() {
     filters.type = "daily";
     filters.date = currentDate;
@@ -445,6 +508,8 @@ function resetFilters() {
     filters.year = currentYear;
     filters.user_id = "";
     filters.status = "";
+    userKeyword.value = "";
+    showUserDropdown.value = false;
     detailSearch.value = "";
     report.value = null;
     error.value = "";
@@ -619,9 +684,25 @@ async function loadReport() {
     }
 }
 
+function handleDocumentClick(event) {
+    const chipBox = document.querySelector(".chip-select-box");
+    const dropdown = document.querySelector(".chip-dropdown");
+
+    if (chipBox?.contains(event.target) || dropdown?.contains(event.target)) {
+        return;
+    }
+
+    showUserDropdown.value = false;
+}
+
 onMounted(async () => {
+    document.addEventListener("click", handleDocumentClick);
     await loadUsers();
     await loadReport();
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener("click", handleDocumentClick);
 });
 
 const columns = [
@@ -677,5 +758,84 @@ const columns = [
 
 .report-stat-icon i {
     font-size: 22px;
+}
+
+.chip-select-box {
+    min-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: #fff;
+    cursor: text;
+}
+
+.chip-select-box:focus-within {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+}
+
+.chip-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #e9f3ff;
+    color: #0b5ed7;
+    border: 1px solid #b6d4fe;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.chip-remove {
+    border: 0;
+    background: transparent;
+    color: #0b5ed7;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+}
+
+.chip-input {
+    border: 0;
+    outline: none;
+    flex: 1;
+    min-width: 160px;
+    padding: 4px 2px;
+    font-size: 14px;
+    background: transparent;
+}
+
+.chip-dropdown {
+    position: absolute;
+    top: calc(100% - 2px);
+    left: 15px;
+    right: 15px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    z-index: 20;
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.chip-dropdown-item {
+    width: 100%;
+    border: 0;
+    background: #fff;
+    text-align: left;
+    padding: 9px 12px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.chip-dropdown-item:hover {
+    background: #f8f9fa;
 }
 </style>
