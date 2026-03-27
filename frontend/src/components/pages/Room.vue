@@ -187,8 +187,8 @@
                         </div>
                     </div>
 
-                    <div class="modal-footer justify-content-between">
-                        <button type="button" class="btn btn-default" @click="hideRoomModal">Close</button>
+                    <div class="modal-footer justify-content">
+                        <!-- <button type="button" class="btn btn-default" @click="hideRoomModal">Close</button> -->
                         <button type="submit" class="btn btn-primary" :disabled="saving">
                             {{ saving ? "Saving..." : "Save" }}
                         </button>
