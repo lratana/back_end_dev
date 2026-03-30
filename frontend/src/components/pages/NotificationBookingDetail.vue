@@ -61,10 +61,7 @@
                                 Cancel
                             </button>
 
-                            <button v-if="canDelete(booking)" type="button" class="btn btn-outline-danger"
-                                :disabled="actionLoading" @click="deleteBooking(booking.id)">
-                                Delete
-                            </button>
+
                         </div>
                     </div>
 
@@ -134,8 +131,23 @@
                                     <th>Recurrence Until</th>
                                     <td>{{ fmtDateOnly(booking.recurrence_until) }}</td>
                                 </tr>
+                                <tr v-if="booking.cancel_reason">
+                                    <th>Cancel Reason</th>
+                                    <td>{{ booking.cancel_reason }}</td>
+                                </tr>
+                                <tr v-if="booking.reject_reason">
+                                    <th>Reject Reason</th>
+                                    <td>{{ booking.reject_reason }}</td>
+                                </tr>
                             </tbody>
                         </table>
+                        <div class="mt-3 text-right">
+                            <button v-if="canDelete(booking)" type="button" class="btn btn-danger"
+                                :disabled="actionLoading" @click="deleteBooking(booking.id)">
+                                <i class="fa fa-trash mr-1"></i>
+                                Delete Booking
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -272,10 +284,21 @@ async function requestCancelBooking(id) {
     const result = await Swal.fire({
         icon: "warning",
         title: "Request Cancel",
-        text: "Do you want to request cancellation for this booking?",
+        input: "textarea",
+        inputLabel: "Reason",
+        inputPlaceholder: "Enter cancel reason...",
+        inputAttributes: {
+            "aria-label": "Enter cancel reason",
+        },
         showCancelButton: true,
         confirmButtonColor: "#f39c12",
         confirmButtonText: "Yes, request",
+        cancelButtonText: "Close",
+        inputValidator: (value) => {
+            if (!String(value || "").trim()) {
+                return "Cancel reason is required";
+            }
+        },
     });
 
     if (!result.isConfirmed) return;
@@ -283,7 +306,9 @@ async function requestCancelBooking(id) {
     try {
         actionLoading.value = true;
         LoadingModal();
-        const response = await apiRequestCancelBooking(id);
+        const response = await apiRequestCancelBooking(id, {
+            reason: String(result.value || "").trim(),
+        });
         booking.value = response.data?.data ?? response.data;
         CloseModal();
         MessageModal("success", "Success", response.data?.message || "Cancel request submitted");
@@ -326,10 +351,21 @@ async function rejectBooking(id) {
     const result = await Swal.fire({
         icon: "warning",
         title: "Reject Booking",
-        text: "Are you sure you want to reject this booking?",
+        input: "textarea",
+        inputLabel: "Reason",
+        inputPlaceholder: "Enter reject reason...",
+        inputAttributes: {
+            "aria-label": "Enter reject reason",
+        },
         showCancelButton: true,
         confirmButtonColor: "#d33",
         confirmButtonText: "Yes, reject",
+        cancelButtonText: "Close",
+        inputValidator: (value) => {
+            if (!String(value || "").trim()) {
+                return "Reject reason is required";
+            }
+        },
     });
 
     if (!result.isConfirmed) return;
@@ -337,7 +373,9 @@ async function rejectBooking(id) {
     try {
         actionLoading.value = true;
         LoadingModal();
-        const response = await apiRejectBooking(id);
+        const response = await apiRejectBooking(id, {
+            reason: String(result.value || "").trim(),
+        });
         booking.value = response.data?.data ?? response.data;
         CloseModal();
         MessageModal("success", "Success", response.data?.message || "Booking rejected");

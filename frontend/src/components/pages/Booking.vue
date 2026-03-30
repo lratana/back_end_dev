@@ -326,14 +326,22 @@
                                 <th>Recurrence Until</th>
                                 <td>{{ fmtDateOnly(selectedBooking.recurrence_until) }}</td>
                             </tr>
+                            <tr v-if="selectedBooking.cancel_reason">
+                                <th>Cancel Reason</th>
+                                <td>{{ selectedBooking.cancel_reason }}</td>
+                            </tr>
+                            <tr v-if="selectedBooking.reject_reason">
+                                <th>Reject Reason</th>
+                                <td>{{ selectedBooking.reject_reason }}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" @click="hideDetailModal">
+                <div class="modal-footer justify-content">
+                    <!-- <button type="button" class="btn btn-default" @click="hideDetailModal">
                         Close
-                    </button>
+                    </button> -->
 
                     <div class="d-flex flex-wrap" style="gap:8px;">
                         <button v-if="selectedBooking && canOpenEdit(selectedBooking)" type="button"
@@ -404,6 +412,10 @@ import {
     apiGetAvailableRooms,
 } from "@func/api/booking";
 import { apiGetRooms } from "@func/api/room";
+
+if (window.$?.fn?.modal?.Constructor?.prototype) {
+    window.$.fn.modal.Constructor.prototype._enforceFocus = function () { };
+}
 
 const store = useStore();
 const route = useRoute();
@@ -1147,10 +1159,29 @@ async function requestCancelBooking(id) {
     const result = await Swal.fire({
         icon: "warning",
         title: "Request Cancel",
-        text: "Do you want to request cancellation for this approved booking?",
+        input: "textarea",
+        inputLabel: "Reason",
+        inputPlaceholder: "Enter cancel reason...",
+        inputAttributes: {
+            "aria-label": "Enter cancel reason",
+        },
         showCancelButton: true,
         confirmButtonColor: "#f39c12",
         confirmButtonText: "Yes, request",
+        cancelButtonText: "Close",
+        allowOutsideClick: false,
+        didOpen: () => {
+            const input = Swal.getInput();
+            if (input) {
+                input.removeAttribute("readonly");
+                input.focus();
+            }
+        },
+        inputValidator: (value) => {
+            if (!String(value || "").trim()) {
+                return "Cancel reason is required";
+            }
+        },
     });
 
     if (!result.isConfirmed) return;
@@ -1158,7 +1189,9 @@ async function requestCancelBooking(id) {
     try {
         actionLoading.value = true;
         LoadingModal();
-        const response = await apiRequestCancelBooking(id);
+        const response = await apiRequestCancelBooking(id, {
+            reason: String(result.value || "").trim(),
+        });
         const item = response.data?.data ?? response.data;
         onBookingUpdate(item);
         selectedBooking.value = item;
@@ -1205,10 +1238,29 @@ async function rejectBooking(id) {
     const result = await Swal.fire({
         icon: "warning",
         title: "Reject Booking",
-        text: "Are you sure you want to reject this booking?",
+        input: "textarea",
+        inputLabel: "Reason",
+        inputPlaceholder: "Enter reject reason...",
+        inputAttributes: {
+            "aria-label": "Enter reject reason",
+        },
         showCancelButton: true,
         confirmButtonColor: "#d33",
         confirmButtonText: "Yes, reject",
+        cancelButtonText: "Close",
+        allowOutsideClick: false,
+        didOpen: () => {
+            const input = Swal.getInput();
+            if (input) {
+                input.removeAttribute("readonly");
+                input.focus();
+            }
+        },
+        inputValidator: (value) => {
+            if (!String(value || "").trim()) {
+                return "Reject reason is required";
+            }
+        },
     });
 
     if (!result.isConfirmed) return;
@@ -1216,7 +1268,9 @@ async function rejectBooking(id) {
     try {
         actionLoading.value = true;
         LoadingModal();
-        const response = await apiRejectBooking(id);
+        const response = await apiRejectBooking(id, {
+            reason: String(result.value || "").trim(),
+        });
         const item = response.data?.data ?? response.data;
         onBookingUpdate(item);
         selectedBooking.value = item;

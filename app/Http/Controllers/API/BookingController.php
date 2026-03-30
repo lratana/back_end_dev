@@ -112,6 +112,8 @@ class BookingController extends Controller
             'technician_required' => $booking->technician_required,
             'technician_note' => $booking->technician_note,
             'status' => $booking->status,
+            'cancel_reason' => $booking->cancel_reason,
+            'reject_reason' => $booking->reject_reason,
             'room' => $booking->room,
             'user' => $booking->user,
             'is_generated' => $generated,
@@ -386,6 +388,8 @@ class BookingController extends Controller
         $data['technician_required'] = $data['technician_required'] ?? false;
         $data['technician_note'] = $data['technician_note'] ?? null;
         $data['status'] = 'pending';
+        $data['cancel_reason'] = null;
+        $data['reject_reason'] = null;
 
         if ($this->hasConflict(
             $data['room_id'],
@@ -423,8 +427,6 @@ class BookingController extends Controller
             ], 422);
         }
 
-        // Align with frontend workflow:
-        // only pending bookings can be edited by anyone.
         if ($booking->status !== 'pending') {
             return response()->json([
                 'message' => 'Only pending bookings can be updated',
@@ -477,16 +479,19 @@ class BookingController extends Controller
             ], 422);
         }
 
-        // Align with frontend workflow:
-        // owner can request cancel only when approved
         if ($booking->status !== 'approved') {
             return response()->json([
                 'message' => 'Only approved bookings can request cancellation',
             ], 422);
         }
 
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
         $booking->update([
             'status' => 'cancel_requested',
+            'cancel_reason' => $data['reason'],
         ]);
 
         $booking->load(['room', 'user']);
@@ -494,7 +499,7 @@ class BookingController extends Controller
         $this->notifyAdmins(
             $booking,
             'Booking Cancel Request',
-            'A booking cancellation request has been submitted.'
+            'A booking cancellation request has been submitted. Reason: ' . $data['reason']
         );
 
         return response()->json([
@@ -534,6 +539,7 @@ class BookingController extends Controller
 
         $booking->update([
             'status' => 'approved',
+            'reject_reason' => null,
         ]);
 
         $booking->load(['room', 'user']);
@@ -568,8 +574,13 @@ class BookingController extends Controller
             ], 422);
         }
 
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
         $booking->update([
             'status' => 'rejected',
+            'reject_reason' => $data['reason'],
         ]);
 
         $booking->load(['room', 'user']);
@@ -577,7 +588,7 @@ class BookingController extends Controller
         $this->notifyBookingOwner(
             $booking,
             'Booking Rejected',
-            'Your booking has been rejected.'
+            'Your booking has been rejected. Reason: ' . $data['reason']
         );
 
         return response()->json([
@@ -634,8 +645,6 @@ class BookingController extends Controller
             ], 422);
         }
 
-        // Align with frontend workflow:
-        // force cancel only approved bookings
         if ($booking->status !== 'approved') {
             return response()->json([
                 'message' => 'Only approved bookings can be force cancelled',
@@ -672,8 +681,6 @@ class BookingController extends Controller
         }
 
         if ($isAdmin) {
-            // Align with frontend workflow:
-            // admin delete only pending / rejected / cancelled
             if (!in_array($booking->status, ['pending', 'rejected', 'cancelled'], true)) {
                 return response()->json([
                     'message' => 'Admin can only delete pending, rejected, or cancelled bookings',

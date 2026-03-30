@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Booking extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'room_id',
         'user_id',
@@ -28,6 +31,8 @@ class Booking extends Model
         'technician_note',
 
         'status',
+        'cancel_reason',
+        'reject_reason',
     ];
 
     protected $casts = [
@@ -40,6 +45,7 @@ class Booking extends Model
 
         'snack_required' => 'boolean',
         'technician_required' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
 
     public function room()

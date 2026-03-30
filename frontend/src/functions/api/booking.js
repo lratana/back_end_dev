@@ -14,16 +14,16 @@ export async function apiUpdateBooking(id, payload) {
     return await window.axios.put(`${window.API_URL}/bookings/update/${id}`, payload);
 }
 
-export async function apiRequestCancelBooking(id) {
-    return await window.axios.put(`${window.API_URL}/bookings/request-cancel/${id}`);
+export async function apiRequestCancelBooking(id, payload = {}) {
+    return await window.axios.put(`${window.API_URL}/bookings/request-cancel/${id}`, payload);
 }
 
 export async function apiApproveBooking(id) {
     return await window.axios.put(`${window.API_URL}/bookings/approve/${id}`);
 }
 
-export async function apiRejectBooking(id) {
-    return await window.axios.put(`${window.API_URL}/bookings/reject/${id}`);
+export async function apiRejectBooking(id, payload = {}) {
+    return await window.axios.put(`${window.API_URL}/bookings/reject/${id}`, payload);
 }
 
 export async function apiConfirmCancelBooking(id) {
