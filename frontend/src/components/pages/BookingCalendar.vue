@@ -45,14 +45,14 @@
         </section>
     </div>
 
-    <!-- Create Booking Modal -->
+    <!-- Create / Edit Booking Modal -->
     <div class="modal fade" ref="createModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary">
                     <h5 class="modal-title">
                         <i class="fas fa-plus-circle mr-2"></i>
-                        Create Booking
+                        {{ bookingForm.id ? "Edit Booking" : "Create Booking" }}
                     </h5>
                     <button type="button" class="close text-white" @click="hideCreateModal">
                         <span>&times;</span>
@@ -186,8 +186,8 @@
 
                 <div class="modal-footer justify-content-between">
                     <button class="btn btn-default" type="button" @click="hideCreateModal">Close</button>
-                    <button class="btn btn-primary" type="button" :disabled="saving" @click="submitCreateBooking">
-                        {{ saving ? "Saving..." : "Create Booking" }}
+                    <button class="btn btn-primary" type="button" :disabled="saving" @click="saveBooking">
+                        {{ saving ? "Saving..." : bookingForm.id ? "Update Booking" : "Create Booking" }}
                     </button>
                 </div>
             </div>
@@ -196,7 +196,7 @@
 
     <!-- Detail Modal -->
     <div class="modal fade" ref="detailModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h5 class="modal-title">
@@ -237,6 +237,9 @@
                                         <span v-if="isPastBooking(selected)" class="badge badge-dark ml-2">
                                             expired
                                         </span>
+                                        <div v-if="statusHelpText(selected.status)" class="small text-muted mt-1">
+                                            {{ statusHelpText(selected.status) }}
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="selected.user?.name">
@@ -293,10 +296,10 @@
                 <div class="modal-footer justify-content-between">
                     <button class="btn btn-default" type="button" @click="hideDetailModal">Close</button>
 
-                    <div class="d-flex" style="gap:8px; flex-wrap:wrap;">
-                        <button v-if="selected && canRequestCancel(selected)" class="btn btn-warning" type="button"
-                            :disabled="actionLoading" @click="onRequestCancel(selected)">
-                            Request Cancel
+                    <div class="d-flex flex-wrap" style="gap:8px;">
+                        <button v-if="selected && canEdit(selected)" class="btn btn-primary" type="button"
+                            @click="editFromDetail">
+                            Edit
                         </button>
 
                         <button v-if="selected && canApprove(selected)" class="btn btn-success" type="button"
@@ -309,6 +312,11 @@
                             Reject
                         </button>
 
+                        <button v-if="selected && canRequestCancel(selected)" class="btn btn-warning" type="button"
+                            :disabled="actionLoading" @click="onRequestCancel(selected)">
+                            Request Cancel
+                        </button>
+
                         <button v-if="selected && canConfirmCancel(selected)" class="btn btn-warning" type="button"
                             :disabled="actionLoading" @click="onConfirmCancel(selected)">
                             Confirm Cancel
@@ -316,7 +324,7 @@
 
                         <button v-if="selected && canAdminDirectCancel(selected)" class="btn btn-warning" type="button"
                             :disabled="actionLoading" @click="onAdminDirectCancel(selected)">
-                            Cancel
+                            Force Cancel
                         </button>
 
                         <button v-if="selected && canDelete(selected)" class="btn btn-outline-danger" type="button"
@@ -331,11 +339,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
+import { useStore } from "vuex";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import Swal from "sweetalert2";
+import { CloseModal, LoadingModal, MessageModal } from "@func/swal";
 import { formatFullDateTime } from "@func/datetime";
 import { apiGetCalendar } from "@/functions/api/calendar";
 import {
@@ -350,6 +361,8 @@ import {
     apiDeleteBooking,
     apiGetAvailableRooms,
 } from "@func/api/booking";
+
+const store = useStore();
 
 const calendarRef = ref(null);
 const createModal = ref(null);
@@ -372,6 +385,8 @@ const lastRange = ref({ start: "", end: "" });
 let availabilityTimer = null;
 
 const bookingForm = reactive({
+    id: null,
+    status: "",
     room_id: "",
     start_datetime: "",
     end_datetime: "",
@@ -387,15 +402,12 @@ const bookingForm = reactive({
     technician_note: "",
 });
 
-const currentUser = computed(() => {
-    try {
-        return JSON.parse(localStorage.getItem("user") || "null");
-    } catch {
-        return null;
-    }
-});
+const currentUser = computed(() => store.state.user || null);
 
-const isAdmin = computed(() => currentUser.value?.level === "admin");
+const isAdmin = computed(() =>
+    ["super_admin", "admin"].includes(currentUser.value?.level)
+);
+
 const isRecurrenceNone = computed(() => bookingForm.recurrence_type === "none");
 
 const canCheckAvailability = computed(() => {
@@ -441,7 +453,7 @@ watch(
     () => [bookingForm.start_datetime, bookingForm.end_datetime],
     ([newStart, newEnd], [oldStart, oldEnd]) => {
         if (newStart !== oldStart || newEnd !== oldEnd) {
-            bookingForm.room_id = "";
+            const currentRoomId = bookingForm.room_id;
             availableRooms.value = [];
             availabilityMessage.value = "";
 
@@ -449,7 +461,7 @@ watch(
 
             if (newStart && newEnd) {
                 availabilityTimer = setTimeout(() => {
-                    loadAvailableRooms(true);
+                    loadAvailableRooms(true, currentRoomId);
                 }, 500);
             }
         }
@@ -471,7 +483,9 @@ function showDetailModal() {
 
 function hideDetailModal() {
     if (window.$ && detailModal.value) window.$(detailModal.value).modal("hide");
-    selected.value = null;
+    setTimeout(() => {
+        selected.value = null;
+    }, 200);
 }
 
 function normalizeDt(dt) {
@@ -580,8 +594,51 @@ function statusClass(status) {
     return "fc-event-default";
 }
 
+function statusHelpText(status) {
+    switch (status) {
+        case "pending":
+            return "Waiting for admin review";
+        case "approved":
+            return "Approved and active";
+        case "rejected":
+            return "Rejected by admin";
+        case "cancel_requested":
+            return "Waiting for admin cancellation approval";
+        case "cancelled":
+            return "Booking has been cancelled";
+        case "completed":
+            return "Booking completed";
+        default:
+            return "";
+    }
+}
+
+function ownerIdOf(booking) {
+    return Number(
+        booking?.user_id ??
+        booking?.user?.id ??
+        selected.value?.user_id ??
+        selected.value?.user?.id ??
+        0
+    );
+}
+
+function canEdit(booking) {
+    if (!booking || isPastBooking(booking)) return false;
+
+    if (isAdmin.value) {
+        return booking.status === "pending";
+    }
+
+    const currentUserId = Number(currentUser.value?.id ?? 0);
+    return ownerIdOf(booking) === currentUserId && booking.status === "pending";
+}
+
 function canRequestCancel(booking) {
-    return !!booking && !isAdmin.value && !isPastBooking(booking) && ["pending", "approved"].includes(booking.status);
+    if (!booking || isPastBooking(booking) || isAdmin.value) return false;
+
+    const currentUserId = Number(currentUser.value?.id ?? 0);
+    return ownerIdOf(booking) === currentUserId && booking.status === "approved";
 }
 
 function canApprove(booking) {
@@ -597,25 +654,27 @@ function canConfirmCancel(booking) {
 }
 
 function canAdminDirectCancel(booking) {
-    return !!booking && isAdmin.value && !isPastBooking(booking) && ["pending", "approved", "cancel_requested"].includes(booking.status);
+    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "approved";
 }
 
 function canDelete(booking) {
     if (!booking) return false;
 
-    if (isAdmin.value) return true;
+    if (isAdmin.value) {
+        return ["pending", "rejected", "cancelled"].includes(booking.status);
+    }
 
     if (isPastBooking(booking)) return false;
 
-    const currentUserId = currentUser.value?.id;
-    if (!currentUserId || Number(booking.user_id) !== Number(currentUserId)) {
-        return false;
-    }
+    const currentUserId = Number(currentUser.value?.id ?? 0);
+    const ownerId = ownerIdOf(booking);
 
-    return booking.status === "pending";
+    return !!currentUserId && !!ownerId && ownerId === currentUserId && booking.status === "pending";
 }
 
 function resetForm() {
+    bookingForm.id = null;
+    bookingForm.status = "";
     bookingForm.room_id = "";
     bookingForm.start_datetime = "";
     bookingForm.end_datetime = "";
@@ -634,6 +693,46 @@ function resetForm() {
     availabilityMessage.value = "";
 }
 
+async function fillFormFromBooking(booking) {
+    if (!booking) return;
+
+    bookingForm.id = booking.id;
+    bookingForm.status = booking.status ?? "";
+    bookingForm.room_id = String(booking.room_id ?? "");
+    bookingForm.start_datetime = formatForInput(booking.start_datetime);
+    bookingForm.end_datetime = formatForInput(booking.end_datetime);
+    bookingForm.recurrence_type = booking.recurrence_type ?? "none";
+    bookingForm.recurrence_days = Array.isArray(booking.recurrence_days)
+        ? booking.recurrence_days.join(",")
+        : (booking.recurrence_days ?? "");
+    bookingForm.recurrence_period = booking.recurrence_period ?? "";
+    bookingForm.recurrence_until = booking.recurrence_until ? String(booking.recurrence_until).slice(0, 10) : "";
+    bookingForm.meeting_title = booking.meeting_title ?? "";
+    bookingForm.meeting_chairman = booking.meeting_chairman ?? "";
+    bookingForm.snack_required = !!booking.snack_required;
+    bookingForm.snack_note = booking.snack_note ?? "";
+    bookingForm.technician_required = !!booking.technician_required;
+    bookingForm.technician_note = booking.technician_note ?? "";
+
+    availableRooms.value = [];
+    availabilityMessage.value = "កំពុងស្វែងរកបន្ទប់ទំនេរ...";
+
+    await loadAvailableRooms(true, booking.room_id);
+}
+
+async function editFromDetail() {
+    if (!selected.value) return;
+
+    const booking = JSON.parse(JSON.stringify(selected.value));
+
+    hideDetailModal();
+
+    setTimeout(async () => {
+        await fillFormFromBooking(booking);
+        showCreateModal();
+    }, 300);
+}
+
 async function loadAvailableRooms(silent = false, preferredRoomId = null) {
     if (!silent) {
         formError.value = "";
@@ -641,7 +740,8 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
 
     availabilityMessage.value = "";
     availableRooms.value = [];
-    bookingForm.room_id = "";
+
+    const currentRoomId = bookingForm.room_id;
 
     if (!bookingForm.start_datetime || !bookingForm.end_datetime) {
         if (!silent) {
@@ -673,25 +773,34 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
         const res = await apiGetAvailableRooms({
             start_datetime: toMysqlDatetime(bookingForm.start_datetime),
             end_datetime: toMysqlDatetime(bookingForm.end_datetime),
+            ignore_id: bookingForm.id || null,
         });
 
         availableRooms.value = res.data?.data ?? [];
 
+        const targetRoomId = preferredRoomId ?? currentRoomId;
+
         if (availableRooms.value.length) {
             availabilityMessage.value = `មានបន្ទប់ទំនេរ ${availableRooms.value.length} បន្ទប់។ សូមជ្រើសរើសបន្ទប់។`;
 
-            if (preferredRoomId) {
+            if (targetRoomId) {
                 const matched = availableRooms.value.find(
-                    (r) => Number(r.id) === Number(preferredRoomId)
+                    (r) => Number(r.id) === Number(targetRoomId)
                 );
+
                 if (matched) {
                     bookingForm.room_id = String(matched.id);
+                } else if (currentRoomId) {
+                    bookingForm.room_id = String(currentRoomId);
                 }
             }
         } else {
             availabilityMessage.value = "មិនមានបន្ទប់ទំនេរ សម្រាប់ថ្ងៃ និងម៉ោងដែលបានជ្រើសទេ។";
+            bookingForm.room_id = currentRoomId || "";
         }
     } catch (e) {
+        bookingForm.room_id = currentRoomId || "";
+
         if (!silent) {
             formError.value =
                 e?.response?.data?.message ||
@@ -723,7 +832,7 @@ async function fetchEvents(info, successCallback, failureCallback) {
                     : (b.room?.name ?? `Room ${b.room_id}`),
                 start: normalizeDt(b.start_datetime),
                 end: normalizeDt(b.end_datetime),
-                editable: !isPastBooking(b) && (isAdmin.value || b.status === "pending"),
+                editable: !isPastBooking(b) && b.status === "pending",
                 extendedProps: { booking: b },
                 classNames: [
                     statusClass(b.status),
@@ -790,7 +899,7 @@ async function onDateClick(info) {
     showCreateModal();
 }
 
-async function submitCreateBooking() {
+async function saveBooking() {
     formError.value = "";
 
     if (!bookingForm.room_id) {
@@ -847,7 +956,9 @@ async function submitCreateBooking() {
     saving.value = true;
 
     try {
-        await apiCreateBooking({
+        LoadingModal();
+
+        const payload = {
             room_id: Number(bookingForm.room_id),
             start_datetime: toMysqlDatetime(bookingForm.start_datetime),
             end_datetime: toMysqlDatetime(bookingForm.end_datetime),
@@ -861,29 +972,68 @@ async function submitCreateBooking() {
             snack_note: bookingForm.snack_required ? (bookingForm.snack_note || null) : null,
             technician_required: !!bookingForm.technician_required,
             technician_note: bookingForm.technician_required ? (bookingForm.technician_note || null) : null,
-        });
+        };
+
+        let response = null;
+
+        if (bookingForm.id) {
+            response = await apiUpdateBooking(bookingForm.id, payload);
+        } else {
+            response = await apiCreateBooking(payload);
+        }
 
         hideCreateModal();
+        CloseModal();
         refetch();
+
+        MessageModal(
+            "success",
+            "Success",
+            response?.data?.message || (bookingForm.id ? "Booking updated successfully" : "Booking created successfully")
+        );
     } catch (e) {
-        formError.value = e?.response?.data?.message || e?.message || "Failed to create booking";
+        CloseModal();
+
+        if (e?.response?.status === 422) {
+            formError.value = e?.response?.data?.message || "Validation failed.";
+            return;
+        }
+
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to save booking"
+        );
     } finally {
+        CloseModal();
         saving.value = false;
     }
 }
 
-function eventClick(info) {
+async function eventClick(info) {
     const booking = info.event.extendedProps?.booking ?? null;
-    if (!booking) return;
+    if (!booking?.id) return;
 
     if (isPastBooking(booking)) {
-        error.value = "This booking has already expired and cannot be opened.";
-        return;
+        return MessageModal("warning", "Expired", "This booking has already expired and cannot be opened.");
     }
 
-    selected.value = booking;
-    detailLoading.value = false;
+    detailLoading.value = true;
+    selected.value = null;
     showDetailModal();
+
+    try {
+        LoadingModal();
+        const res = await apiGetBooking(booking.id);
+        selected.value = res.data?.data ?? res.data?.booking ?? res.data;
+        CloseModal();
+    } catch (e) {
+        CloseModal();
+        hideDetailModal();
+        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to load booking detail");
+    } finally {
+        detailLoading.value = false;
+    }
 }
 
 async function eventDrop(info) {
@@ -896,9 +1046,9 @@ async function eventDrop(info) {
         return;
     }
 
-    if (!isAdmin.value && booking.status !== "pending") {
+    if (booking.status !== "pending") {
         info.revert();
-        error.value = "You can only move pending bookings";
+        error.value = "Only pending bookings can be modified.";
         return;
     }
 
@@ -938,9 +1088,9 @@ async function eventResize(info) {
         return;
     }
 
-    if (!isAdmin.value && booking.status !== "pending") {
+    if (booking.status !== "pending") {
         info.revert();
-        error.value = "You can only resize pending bookings";
+        error.value = "Only pending bookings can be modified.";
         return;
     }
 
@@ -982,91 +1132,179 @@ async function reloadBookingAfterAction(id) {
 }
 
 async function onRequestCancel(booking) {
-    if (!booking?.id || !window.confirm("Do you want to request cancellation for this booking?")) return;
+    if (!booking?.id) return;
+
+    const result = await Swal.fire({
+        icon: "warning",
+        title: "Request Cancel",
+        text: "Do you want to request cancellation for this approved booking?",
+        showCancelButton: true,
+        confirmButtonColor: "#f39c12",
+        confirmButtonText: "Yes, request",
+    });
+
+    if (!result.isConfirmed) return;
 
     actionLoading.value = true;
     try {
-        await apiRequestCancelBooking(booking.id);
+        LoadingModal();
+        const response = await apiRequestCancelBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
+        CloseModal();
+        MessageModal("success", "Success", response?.data?.message || "Cancel request submitted");
     } catch (e) {
-        error.value = e?.response?.data?.message || e?.message || "Failed to request cancel";
+        CloseModal();
+        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to request cancel");
     } finally {
         actionLoading.value = false;
     }
 }
 
 async function onApproveBooking(booking) {
-    if (!booking?.id || !window.confirm("Approve this booking?")) return;
+    if (!booking?.id) return;
+
+    const result = await Swal.fire({
+        icon: "question",
+        title: "Approve Booking",
+        text: "Are you sure you want to approve this booking?",
+        showCancelButton: true,
+        confirmButtonColor: "#28a745",
+        confirmButtonText: "Yes, approve",
+    });
+
+    if (!result.isConfirmed) return;
 
     actionLoading.value = true;
     try {
-        await apiApproveBooking(booking.id);
+        LoadingModal();
+        const response = await apiApproveBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
+        CloseModal();
+        MessageModal("success", "Success", response?.data?.message || "Booking approved");
     } catch (e) {
-        error.value = e?.response?.data?.message || e?.message || "Failed to approve booking";
+        CloseModal();
+        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to approve booking");
     } finally {
         actionLoading.value = false;
     }
 }
 
 async function onRejectBooking(booking) {
-    if (!booking?.id || !window.confirm("Reject this booking?")) return;
+    if (!booking?.id) return;
+
+    const result = await Swal.fire({
+        icon: "warning",
+        title: "Reject Booking",
+        text: "Are you sure you want to reject this booking?",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        confirmButtonText: "Yes, reject",
+    });
+
+    if (!result.isConfirmed) return;
 
     actionLoading.value = true;
     try {
-        await apiRejectBooking(booking.id);
+        LoadingModal();
+        const response = await apiRejectBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
+        CloseModal();
+        MessageModal("success", "Success", response?.data?.message || "Booking rejected");
     } catch (e) {
-        error.value = e?.response?.data?.message || e?.message || "Failed to reject booking";
+        CloseModal();
+        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to reject booking");
     } finally {
         actionLoading.value = false;
     }
 }
 
 async function onConfirmCancel(booking) {
-    if (!booking?.id || !window.confirm("Confirm cancel for this booking?")) return;
+    if (!booking?.id) return;
+
+    const result = await Swal.fire({
+        icon: "warning",
+        title: "Confirm Cancel",
+        text: "Are you sure you want to confirm this cancellation?",
+        showCancelButton: true,
+        confirmButtonColor: "#f39c12",
+        confirmButtonText: "Yes, confirm",
+    });
+
+    if (!result.isConfirmed) return;
 
     actionLoading.value = true;
     try {
-        await apiConfirmCancelBooking(booking.id);
+        LoadingModal();
+        const response = await apiConfirmCancelBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
+        CloseModal();
+        MessageModal("success", "Success", response?.data?.message || "Booking cancelled");
     } catch (e) {
-        error.value = e?.response?.data?.message || e?.message || "Failed to confirm cancel";
+        CloseModal();
+        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to confirm cancel");
     } finally {
         actionLoading.value = false;
     }
 }
 
 async function onAdminDirectCancel(booking) {
-    if (!booking?.id || !window.confirm("Cancel this booking directly as admin?")) return;
+    if (!booking?.id) return;
+
+    const result = await Swal.fire({
+        icon: "warning",
+        title: "Force Cancel Booking",
+        text: "This booking is already approved. Do you want to force cancel it as admin?",
+        showCancelButton: true,
+        confirmButtonColor: "#f39c12",
+        confirmButtonText: "Yes, force cancel",
+    });
+
+    if (!result.isConfirmed) return;
 
     actionLoading.value = true;
     try {
-        await apiAdminCancelBooking(booking.id);
+        LoadingModal();
+        const response = await apiAdminCancelBooking(booking.id);
         await reloadBookingAfterAction(booking.id);
+        CloseModal();
+        MessageModal("success", "Success", response?.data?.message || "Booking cancelled");
     } catch (e) {
-        error.value = e?.response?.data?.message || e?.message || "Failed to cancel booking";
+        CloseModal();
+        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to force cancel booking");
     } finally {
         actionLoading.value = false;
     }
 }
 
 async function onDeleteBooking(booking) {
-    if (!booking?.id || !window.confirm("Delete this booking permanently?")) return;
+    if (!booking?.id) return;
+
+    const result = await Swal.fire({
+        icon: "warning",
+        title: "Delete Booking",
+        text: "Delete this booking permanently?",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        confirmButtonText: "Yes, delete",
+    });
+
+    if (!result.isConfirmed) return;
 
     actionLoading.value = true;
     try {
-        await apiDeleteBooking(booking.id);
+        LoadingModal();
+        const response = await apiDeleteBooking(booking.id);
         hideDetailModal();
         refetch();
+        CloseModal();
+        MessageModal("success", "Success", response?.data?.message || "Booking deleted");
     } catch (e) {
-        error.value = e?.response?.data?.message || e?.message || "Failed to delete booking";
+        CloseModal();
+        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to delete booking");
     } finally {
         actionLoading.value = false;
     }
 }
-
-onMounted(async () => { });
 
 const calendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -1096,7 +1334,7 @@ const calendarOptions = {
 };
 </script>
 
-<style>
+<style scoped>
 .gc-wrap {
     background: #fff;
     border-radius: 10px;
@@ -1153,7 +1391,7 @@ const calendarOptions = {
     background: #343a40;
 }
 
-.fc .fc-event {
+:deep(.fc .fc-event) {
     border: 0 !important;
     border-radius: 8px !important;
     padding: 2px 6px !important;
@@ -1162,55 +1400,60 @@ const calendarOptions = {
     box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
 }
 
-.fc .fc-day-today {
+:deep(.fc .fc-day-today) {
     background: rgba(0, 123, 255, .08) !important;
 }
 
-.fc-event-pending {
+:deep(.fc-event-pending) {
     background: #ffc107 !important;
     color: #212529 !important;
 }
 
-.fc-event-approved {
+:deep(.fc-event-approved) {
     background: #28a745 !important;
     color: #fff !important;
 }
 
-.fc-event-rejected {
+:deep(.fc-event-rejected) {
     background: #dc3545 !important;
     color: #fff !important;
 }
 
-.fc-event-cancel-requested {
+:deep(.fc-event-cancel-requested) {
     background: #17a2b8 !important;
     color: #fff !important;
 }
 
-.fc-event-cancelled {
+:deep(.fc-event-cancelled) {
     background: #6c757d !important;
     color: #fff !important;
     text-decoration: line-through;
     opacity: .9;
 }
 
-.fc-event-completed {
+:deep(.fc-event-completed) {
     background: #007bff !important;
     color: #fff !important;
 }
 
-.fc-event-default {
+:deep(.fc-event-default) {
     background: #343a40 !important;
     color: #fff !important;
 }
 
-.fc-event-expired {
+:deep(.fc-event-expired) {
     opacity: .55 !important;
     cursor: not-allowed !important;
     filter: grayscale(20%);
 }
 
-.fc-event-expired .fc-event-title,
-.fc-event-expired .fc-event-time {
+:deep(.fc-event-expired .fc-event-title),
+:deep(.fc-event-expired .fc-event-time) {
     text-decoration: line-through;
+}
+
+.modal .modal-body {
+    max-height: calc(100vh - 210px);
+    overflow-y: auto;
 }
 </style>

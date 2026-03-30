@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Requests\Booking\UpdateBookingRequest;
 use App\Models\Booking;
+use App\Models\Room;
 use App\Models\User;
 use App\Notifications\BookingStatusNotification;
 use Carbon\Carbon;
@@ -15,7 +16,7 @@ class BookingController extends Controller
 {
     private function isAdmin(Request $request): bool
     {
-        return $request->user()?->level === 'admin';
+        return in_array($request->user()?->level, ['admin', 'super_admin'], true);
     }
 
     private function hasConflict(int $roomId, string $start, string $end, ?int $ignoreId = null): bool
@@ -71,7 +72,7 @@ class BookingController extends Controller
     private function notifyAdmins(Booking $booking, string $title, string $message): void
     {
         $admins = User::query()
-            ->where('level', 'admin')
+            ->whereIn('level', ['admin', 'super_admin'])
             ->where('id', '!=', $booking->user_id)
             ->get();
 
@@ -87,8 +88,12 @@ class BookingController extends Controller
         }
     }
 
-    private function makeOccurrencePayload(Booking $booking, Carbon $occurrenceStart, Carbon $occurrenceEnd, bool $generated = false): array
-    {
+    private function makeOccurrencePayload(
+        Booking $booking,
+        Carbon $occurrenceStart,
+        Carbon $occurrenceEnd,
+        bool $generated = false
+    ): array {
         return [
             'id' => $generated ? "{$booking->id}_" . $occurrenceStart->format('YmdHis') : $booking->id,
             'booking_id' => $booking->id,
@@ -135,6 +140,7 @@ class BookingController extends Controller
             if ($baseStart < $rangeEnd && $baseEnd > $rangeStart) {
                 $results[] = $this->makeOccurrencePayload($booking, $baseStart, $baseEnd, false);
             }
+
             return $results;
         }
 
@@ -190,6 +196,7 @@ class BookingController extends Controller
             ];
 
             $weekIndex = 0;
+
             while (true) {
                 $currentWeekStart = $weekStart->copy()->addWeeks($weekIndex * $period);
 
@@ -239,6 +246,7 @@ class BookingController extends Controller
             }
 
             usort($results, fn($a, $b) => strcmp($a['start_datetime'], $b['start_datetime']));
+
             return $results;
         }
 
@@ -310,7 +318,7 @@ class BookingController extends Controller
             'ignore_id' => ['nullable', 'integer'],
         ]);
 
-        $rooms = \App\Models\Room::query()
+        $rooms = Room::query()
             ->get()
             ->filter(function ($room) use ($data) {
                 return !$this->hasConflict(
@@ -344,17 +352,16 @@ class BookingController extends Controller
         if (!$this->isAdmin($request)) {
             $query->where('user_id', $request->user()->id);
 
-            // User: booking ជិតដល់ថ្ងៃមុនគេ
             return response()->json(
                 $query->orderBy('start_datetime', 'asc')->paginate($perPage)
             );
         }
 
-        // Admin: booking ថ្ងៃក្រោយ/ថ្មីជាងនៅលើ
         return response()->json(
             $query->orderBy('start_datetime', 'desc')->paginate($perPage)
         );
     }
+
     public function show(Request $request, Booking $booking)
     {
         if (!$this->isAdmin($request) && $booking->user_id !== $request->user()->id) {
@@ -386,7 +393,7 @@ class BookingController extends Controller
             $data['end_datetime']
         )) {
             return response()->json([
-                'message' => 'Room is already booked for this time'
+                'message' => 'Room is already booked for this time',
             ], 422);
         }
 
@@ -404,20 +411,23 @@ class BookingController extends Controller
     public function update(UpdateBookingRequest $request, Booking $booking)
     {
         $isAdmin = $this->isAdmin($request);
+        $isOwner = $booking->user_id === $request->user()->id;
 
-        if (!$isAdmin && $booking->user_id !== $request->user()->id) {
+        if (!$isAdmin && !$isOwner) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
         if ($this->isPastBooking($booking)) {
             return response()->json([
-                'message' => 'Past bookings cannot be updated'
+                'message' => 'Past bookings cannot be updated',
             ], 422);
         }
 
-        if (!$isAdmin && $booking->status !== 'pending') {
+        // Align with frontend workflow:
+        // only pending bookings can be edited by anyone.
+        if ($booking->status !== 'pending') {
             return response()->json([
-                'message' => 'You can only update pending bookings'
+                'message' => 'Only pending bookings can be updated',
             ], 422);
         }
 
@@ -437,7 +447,7 @@ class BookingController extends Controller
 
         if ($this->hasConflict($roomId, $start, $end, $booking->id)) {
             return response()->json([
-                'message' => 'Room is already booked for this time'
+                'message' => 'Room is already booked for this time',
             ], 422);
         }
 
@@ -463,18 +473,20 @@ class BookingController extends Controller
 
         if ($this->isPastBooking($booking)) {
             return response()->json([
-                'message' => 'Past bookings cannot request cancellation'
+                'message' => 'Past bookings cannot request cancellation',
             ], 422);
         }
 
-        if (!in_array($booking->status, ['pending', 'approved'], true)) {
+        // Align with frontend workflow:
+        // owner can request cancel only when approved
+        if ($booking->status !== 'approved') {
             return response()->json([
-                'message' => 'This booking cannot be cancelled'
+                'message' => 'Only approved bookings can request cancellation',
             ], 422);
         }
 
         $booking->update([
-            'status' => 'cancel_requested'
+            'status' => 'cancel_requested',
         ]);
 
         $booking->load(['room', 'user']);
@@ -487,7 +499,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Cancel request submitted successfully',
-            'data' => $booking
+            'data' => $booking,
         ]);
     }
 
@@ -499,13 +511,13 @@ class BookingController extends Controller
 
         if ($this->isPastBooking($booking)) {
             return response()->json([
-                'message' => 'Past bookings cannot be approved'
+                'message' => 'Past bookings cannot be approved',
             ], 422);
         }
 
         if ($booking->status !== 'pending') {
             return response()->json([
-                'message' => 'Only pending bookings can be approved'
+                'message' => 'Only pending bookings can be approved',
             ], 422);
         }
 
@@ -516,12 +528,12 @@ class BookingController extends Controller
             $booking->id
         )) {
             return response()->json([
-                'message' => 'Room is already booked for this time'
+                'message' => 'Room is already booked for this time',
             ], 422);
         }
 
         $booking->update([
-            'status' => 'approved'
+            'status' => 'approved',
         ]);
 
         $booking->load(['room', 'user']);
@@ -534,7 +546,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking approved successfully',
-            'data' => $booking
+            'data' => $booking,
         ]);
     }
 
@@ -546,18 +558,18 @@ class BookingController extends Controller
 
         if ($this->isPastBooking($booking)) {
             return response()->json([
-                'message' => 'Past bookings cannot be rejected'
+                'message' => 'Past bookings cannot be rejected',
             ], 422);
         }
 
         if ($booking->status !== 'pending') {
             return response()->json([
-                'message' => 'Only pending bookings can be rejected'
+                'message' => 'Only pending bookings can be rejected',
             ], 422);
         }
 
         $booking->update([
-            'status' => 'rejected'
+            'status' => 'rejected',
         ]);
 
         $booking->load(['room', 'user']);
@@ -570,7 +582,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking rejected successfully',
-            'data' => $booking
+            'data' => $booking,
         ]);
     }
 
@@ -582,18 +594,18 @@ class BookingController extends Controller
 
         if ($this->isPastBooking($booking)) {
             return response()->json([
-                'message' => 'Past bookings cannot confirm cancellation'
+                'message' => 'Past bookings cannot confirm cancellation',
             ], 422);
         }
 
         if ($booking->status !== 'cancel_requested') {
             return response()->json([
-                'message' => 'This booking has no cancel request'
+                'message' => 'This booking has no cancel request',
             ], 422);
         }
 
         $booking->update([
-            'status' => 'cancelled'
+            'status' => 'cancelled',
         ]);
 
         $booking->load(['room', 'user']);
@@ -606,7 +618,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking cancelled successfully',
-            'data' => $booking
+            'data' => $booking,
         ]);
     }
 
@@ -618,18 +630,20 @@ class BookingController extends Controller
 
         if ($this->isPastBooking($booking)) {
             return response()->json([
-                'message' => 'Past bookings cannot be cancelled directly'
+                'message' => 'Past bookings cannot be cancelled directly',
             ], 422);
         }
 
-        if (!in_array($booking->status, ['pending', 'approved', 'cancel_requested'], true)) {
+        // Align with frontend workflow:
+        // force cancel only approved bookings
+        if ($booking->status !== 'approved') {
             return response()->json([
-                'message' => 'This booking cannot be cancelled directly'
+                'message' => 'Only approved bookings can be force cancelled',
             ], 422);
         }
 
         $booking->update([
-            'status' => 'cancelled'
+            'status' => 'cancelled',
         ]);
 
         $booking->load(['room', 'user']);
@@ -642,7 +656,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => 'Booking cancelled successfully by admin',
-            'data' => $booking
+            'data' => $booking,
         ]);
     }
 
@@ -651,38 +665,42 @@ class BookingController extends Controller
         $isAdmin = $this->isAdmin($request);
         $isOwner = $booking->user_id === $request->user()->id;
 
-        // Admin delete បានគ្រប់ booking
+        if ($this->isPastBooking($booking)) {
+            return response()->json([
+                'message' => 'Past bookings cannot be deleted',
+            ], 422);
+        }
+
         if ($isAdmin) {
+            // Align with frontend workflow:
+            // admin delete only pending / rejected / cancelled
+            if (!in_array($booking->status, ['pending', 'rejected', 'cancelled'], true)) {
+                return response()->json([
+                    'message' => 'Admin can only delete pending, rejected, or cancelled bookings',
+                ], 422);
+            }
+
             $booking->delete();
 
             return response()->json([
-                'message' => 'Booking deleted successfully'
+                'message' => 'Booking deleted successfully',
             ]);
         }
 
-        // User មិនមែនម្ចាស់ booking
         if (!$isOwner) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        // Past booking មិនអោយ delete
-        if ($this->isPastBooking($booking)) {
-            return response()->json([
-                'message' => 'Past bookings cannot be deleted'
-            ], 422);
-        }
-
-        // User delete បានតែ booking ដែល admin មិនទាន់ approve
         if ($booking->status !== 'pending') {
             return response()->json([
-                'message' => 'You can only delete pending bookings'
+                'message' => 'You can only delete pending bookings',
             ], 422);
         }
 
         $booking->delete();
 
         return response()->json([
-            'message' => 'Booking deleted successfully'
+            'message' => 'Booking deleted successfully',
         ]);
     }
 
@@ -758,8 +776,7 @@ class BookingController extends Controller
         $rangeStart = Carbon::parse($data['start']);
         $rangeEnd = Carbon::parse($data['end']);
 
-        $query = Booking::with(['room', 'user'])
-            ->whereNotIn('status', ['rejected', 'cancelled']);
+        $query = Booking::with(['room', 'user']);
 
         if (!$this->isAdmin($request)) {
             $query->where('user_id', $request->user()->id);

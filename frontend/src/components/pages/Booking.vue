@@ -73,7 +73,7 @@
     <!-- Create / Edit Modal -->
     <div class="modal fade" ref="bookingModal" aria-modal="true" role="dialog">
         <form @submit.prevent="saveBooking">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h4 class="modal-title">
@@ -237,7 +237,7 @@
 
     <!-- Detail Modal -->
     <div class="modal fade" ref="detailModal" aria-modal="true" role="dialog">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header bg-info">
                     <h4 class="modal-title">Booking Detail</h4>
@@ -280,6 +280,10 @@
                                     <span v-if="isPastBooking(selectedBooking)" class="badge badge-dark ml-2">
                                         expired
                                     </span>
+
+                                    <div v-if="statusHelpText(selectedBooking.status)" class="small text-muted mt-1">
+                                        {{ statusHelpText(selectedBooking.status) }}
+                                    </div>
                                 </td>
                             </tr>
                             <tr>
@@ -363,7 +367,7 @@
                         <button v-if="selectedBooking && canAdminDirectCancel(selectedBooking)" type="button"
                             class="btn btn-warning" :disabled="actionLoading"
                             @click="adminDirectCancelBooking(selectedBooking.id)">
-                            <i class="fa fa-ban mr-1"></i> Cancel
+                            <i class="fa fa-ban mr-1"></i> Force Cancel
                         </button>
 
                         <button v-if="selectedBooking && canDelete(selectedBooking)" type="button"
@@ -431,7 +435,9 @@ const filters = reactive({
 });
 
 const currentUser = computed(() => store.state.user || null);
-const isAdmin = computed(() => currentUser.value?.level === "admin");
+const isAdmin = computed(() =>
+    ["super_admin", "admin"].includes(currentUser.value?.level)
+);
 const roomOptions = computed(() => rooms.value ?? []);
 const isRecurrenceNone = computed(() => bookingObject.recurrence_type === "none");
 
@@ -577,6 +583,25 @@ function statusBadge(status) {
     }
 }
 
+function statusHelpText(status) {
+    switch (status) {
+        case "pending":
+            return "Waiting for admin review";
+        case "approved":
+            return "Approved and active";
+        case "rejected":
+            return "Rejected by admin";
+        case "cancel_requested":
+            return "Waiting for admin cancellation approval";
+        case "cancelled":
+            return "Booking has been cancelled";
+        case "completed":
+            return "Booking completed";
+        default:
+            return "";
+    }
+}
+
 const bookingObject = reactive({
     id: null,
     room_id: "",
@@ -654,7 +679,7 @@ watch(
     () => [bookingObject.start_datetime, bookingObject.end_datetime],
     ([newStart, newEnd], [oldStart, oldEnd]) => {
         if (newStart !== oldStart || newEnd !== oldEnd) {
-            bookingObject.room_id = "";
+            const currentSelectedRoomId = bookingObject.room_id;
             availableRooms.value = [];
             availabilityMessage.value = "";
 
@@ -662,7 +687,7 @@ watch(
 
             if (newStart && newEnd) {
                 availabilityTimer = setTimeout(() => {
-                    loadAvailableRooms(true);
+                    loadAvailableRooms(true, currentSelectedRoomId);
                 }, 500);
             }
         }
@@ -671,7 +696,6 @@ watch(
 
 const canEditBookingForm = computed(() => {
     if (!bookingObject.id) return true;
-    if (isAdmin.value) return !isPastBooking(bookingObject);
     return bookingObject.status === "pending" && !isPastBooking(bookingObject);
 });
 
@@ -706,7 +730,10 @@ function showDetailModal() {
 function hideDetailModal() {
     if (!window.$ || !detailModal.value) return;
     window.$(detailModal.value).modal("hide");
-    selectedBooking.value = null;
+
+    setTimeout(() => {
+        selectedBooking.value = null;
+    }, 200);
 
     if (route.query.bookingId) {
         const query = { ...route.query };
@@ -718,14 +745,13 @@ function hideDetailModal() {
 function canOpenEdit(booking) {
     if (!booking) return false;
     if (isPastBooking(booking)) return false;
-    if (isAdmin.value) return true;
     return booking.status === "pending";
 }
 
 function canRequestCancel(booking) {
     if (!booking || isAdmin.value) return false;
     if (isPastBooking(booking)) return false;
-    return ["pending", "approved"].includes(booking.status);
+    return booking.status === "approved";
 }
 
 function canApprove(booking) {
@@ -749,13 +775,15 @@ function canConfirmCancel(booking) {
 function canAdminDirectCancel(booking) {
     if (!booking || !isAdmin.value) return false;
     if (isPastBooking(booking)) return false;
-    return ["pending", "approved", "cancel_requested"].includes(booking.status);
+    return booking.status === "approved";
 }
 
 function canDelete(booking) {
     if (!booking) return false;
 
-    if (isAdmin.value) return true;
+    if (isAdmin.value) {
+        return ["pending", "rejected", "cancelled"].includes(booking.status);
+    }
 
     if (isPastBooking(booking)) return false;
 
@@ -826,9 +854,11 @@ async function openBookingDetailById(id) {
 }
 
 async function fillFormFromBooking(booking) {
+    if (!booking) return;
+
     Object.assign(bookingObject, {
         id: booking.id,
-        room_id: "",
+        room_id: String(booking.room_id ?? ""),
         start_datetime: toLocalInput(booking.start_datetime),
         end_datetime: toLocalInput(booking.end_datetime),
         recurrence_type: booking.recurrence_type ?? "none",
@@ -854,9 +884,15 @@ async function fillFormFromBooking(booking) {
 
 async function editFromDetail() {
     if (!selectedBooking.value) return;
+
+    const booking = JSON.parse(JSON.stringify(selectedBooking.value));
+
     hideDetailModal();
-    showBookingModal();
-    await fillFormFromBooking(selectedBooking.value);
+
+    setTimeout(async () => {
+        await fillFormFromBooking(booking);
+        showBookingModal();
+    }, 300);
 }
 
 function validateBookingForm() {
@@ -958,8 +994,8 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
 
     availabilityMessage.value = "";
     bookingErr.room_id = "";
-    availableRooms.value = [];
-    bookingObject.room_id = "";
+
+    const currentSelectedRoomId = bookingObject.room_id;
 
     if (!bookingObject.start_datetime || !bookingObject.end_datetime) {
         if (!silent) {
@@ -996,19 +1032,26 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
 
         availableRooms.value = res.data?.data ?? [];
 
+        const preferredId = preferredRoomId ?? currentSelectedRoomId;
+
         if (availableRooms.value.length) {
             availabilityMessage.value = `មានបន្ទប់ទំនេរ ${availableRooms.value.length} បន្ទប់។ សូមជ្រើសរើសបន្ទប់។`;
 
-            if (preferredRoomId) {
-                const matched = availableRooms.value.find((r) => Number(r.id) === Number(preferredRoomId));
+            if (preferredId) {
+                const matched = availableRooms.value.find((r) => Number(r.id) === Number(preferredId));
                 if (matched) {
                     bookingObject.room_id = String(matched.id);
+                } else if (currentSelectedRoomId) {
+                    bookingObject.room_id = String(currentSelectedRoomId);
                 }
             }
         } else {
             availabilityMessage.value = "មិនមានបន្ទប់ទំនេរ សម្រាប់ថ្ងៃ និងម៉ោងដែលបានជ្រើសទេ។";
+            bookingObject.room_id = currentSelectedRoomId || "";
         }
     } catch (e) {
+        bookingObject.room_id = currentSelectedRoomId || "";
+
         if (!silent) {
             formError.value =
                 e?.response?.data?.message ||
@@ -1104,7 +1147,7 @@ async function requestCancelBooking(id) {
     const result = await Swal.fire({
         icon: "warning",
         title: "Request Cancel",
-        text: "Do you want to request cancellation for this booking?",
+        text: "Do you want to request cancellation for this approved booking?",
         showCancelButton: true,
         confirmButtonColor: "#f39c12",
         confirmButtonText: "Yes, request",
@@ -1219,11 +1262,11 @@ async function confirmCancelBooking(id) {
 async function adminDirectCancelBooking(id) {
     const result = await Swal.fire({
         icon: "warning",
-        title: "Cancel Booking",
-        text: "Cancel this booking directly as admin?",
+        title: "Force Cancel Booking",
+        text: "This booking is already approved. Do you want to force cancel it as admin?",
         showCancelButton: true,
         confirmButtonColor: "#f39c12",
-        confirmButtonText: "Yes, cancel",
+        confirmButtonText: "Yes, force cancel",
     });
 
     if (!result.isConfirmed) return;
@@ -1386,3 +1429,10 @@ const columns = [
     },
 ];
 </script>
+
+<style scoped>
+.modal .modal-body {
+    max-height: calc(100vh - 210px);
+    overflow-y: auto;
+}
+</style>
