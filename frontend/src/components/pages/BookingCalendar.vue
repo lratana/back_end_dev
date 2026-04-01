@@ -13,24 +13,30 @@
                     <div class="card-header">
                         <h3 class="card-title">
                             <i class="fas fa-calendar-alt mr-2"></i>
-                            Booking Calendar
+                            {{ $t('booking_calendar') }}
                         </h3>
 
                         <div class="card-tools d-flex align-items-center" style="gap:8px;">
                             <div class="calendar-legend mr-2">
-                                <div class="legend-item"><span class="legend-color pending"></span>Pending</div>
-                                <div class="legend-item"><span class="legend-color approved"></span>Approved</div>
-                                <div class="legend-item"><span class="legend-color rejected"></span>Rejected</div>
-                                <div class="legend-item"><span class="legend-color cancel_requested"></span>Cancel
-                                    Request</div>
-                                <div class="legend-item"><span class="legend-color cancelled"></span>Cancelled</div>
-                                <div class="legend-item"><span class="legend-color completed"></span>Completed</div>
-                                <div class="legend-item"><span class="legend-color expired"></span>Expired</div>
+                                <div class="legend-item"><span class="legend-color pending"></span>{{ $t('pending') }}
+                                </div>
+                                <div class="legend-item"><span class="legend-color approved"></span>{{ $t('approved') }}
+                                </div>
+                                <div class="legend-item"><span class="legend-color rejected"></span>{{ $t('rejected') }}
+                                </div>
+                                <div class="legend-item"><span class="legend-color cancel_requested"></span>{{
+                                    $t('cancel_requested') }}</div>
+                                <div class="legend-item"><span class="legend-color cancelled"></span>{{ $t('cancelled')
+                                }}</div>
+                                <div class="legend-item"><span class="legend-color completed"></span>{{ $t('completed')
+                                }}</div>
+                                <div class="legend-item"><span class="legend-color expired"></span>{{ $t('expired') }}
+                                </div>
                             </div>
 
                             <button class="btn btn-sm btn-outline-primary" :disabled="loading" @click="refetch">
                                 <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': loading }"></i>
-                                Reload
+                                {{ $t('refresh') }}
                             </button>
                         </div>
                     </div>
@@ -52,7 +58,7 @@
                 <div class="modal-header bg-primary">
                     <h5 class="modal-title">
                         <i class="fas fa-plus-circle mr-2"></i>
-                        {{ bookingForm.id ? "Edit Booking" : "Create Booking" }}
+                        {{ bookingForm.id ? $t('edit_booking') : $t('create_booking') }}
                     </h5>
                     <button type="button" class="close text-white" @click="hideCreateModal">
                         <span>&times;</span>
@@ -70,12 +76,12 @@
 
                     <div class="form-row">
                         <div class="form-group col-md-6">
-                            <label>Start <span class="text-danger">*</span></label>
+                            <label>{{ $t('start_datetime') }} <span class="text-danger">*</span></label>
                             <input v-model="bookingForm.start_datetime" type="datetime-local" class="form-control" />
                         </div>
 
                         <div class="form-group col-md-6">
-                            <label>End <span class="text-danger">*</span></label>
+                            <label>{{ $t('end_datetime') }} <span class="text-danger">*</span></label>
                             <input v-model="bookingForm.end_datetime" type="datetime-local" class="form-control" />
                         </div>
 
@@ -83,7 +89,7 @@
                             <button type="button" class="btn btn-outline-info btn-sm"
                                 :disabled="checkingAvailability || !canCheckAvailability" @click="loadAvailableRooms">
                                 <i class="fas fa-search mr-1" :class="{ 'fa-spin': checkingAvailability }"></i>
-                                {{ checkingAvailability ? "Checking..." : "Refresh Available Rooms" }}
+                                {{ checkingAvailability ? $t('loading') : $t('refresh_available_rooms') }}
                             </button>
 
                             <small class="text-muted">
@@ -92,16 +98,16 @@
                         </div>
 
                         <div class="form-group col-md-6">
-                            <label>Room <span class="text-danger">*</span></label>
+                            <label>{{ $t('room') }} <span class="text-danger">*</span></label>
                             <select class="form-control" v-model="bookingForm.room_id"
                                 :disabled="!canSelectRoom || checkingAvailability">
                                 <option value="" disabled>
                                     {{
                                         checkingAvailability
-                                            ? "Loading available rooms..."
+                                            ? $t('loading_available_rooms')
                                             : availableRooms.length
-                                                ? "Select available room..."
-                                                : "No available room"
+                                                ? $t('select_room')
+                                                : $t('no_data')
                                     }}
                                 </option>
                                 <option v-for="r in availableRooms" :key="r.id" :value="String(r.id)">
@@ -135,23 +141,29 @@
                                 placeholder="Chairman name" />
                         </div>
 
-                        <div class="form-group col-md-6">
-                            <label>Recurrence Period</label>
-                            <input v-model="bookingForm.recurrence_period" type="number" min="1" class="form-control"
-                                :disabled="isRecurrenceNone" />
-                        </div>
+                        <!-- Recurrence Section -->
+                        <div v-if="!isRecurrenceNone" class="col-md-12">
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label>Recurrence Period</label>
+                                    <input v-model="bookingForm.recurrence_period" type="number" min="1"
+                                        class="form-control" />
+                                </div>
 
-                        <div class="form-group col-md-6">
-                            <label>Recurrence Until</label>
-                            <input v-model="bookingForm.recurrence_until" type="date" class="form-control"
-                                :disabled="isRecurrenceNone" />
-                        </div>
+                                <div class="form-group col-md-6">
+                                    <label>Recurrence Until</label>
+                                    <input v-model="bookingForm.recurrence_until" type="date" class="form-control" />
+                                </div>
 
-                        <div class="form-group col-md-12">
-                            <label>Recurrence Days</label>
-                            <input v-model="bookingForm.recurrence_days" type="text" class="form-control"
-                                placeholder="mon,tue or wed,fri" :disabled="isRecurrenceNone" />
-                            <small class="text-muted">Use: mon, tue, wed, thu, fri, sat, sun</small>
+                                <div class="form-group col-md-12">
+                                    <label>Recurrence Days</label>
+                                    <input v-model="bookingForm.recurrence_days" type="text" class="form-control"
+                                        placeholder="mon,tue or wed,fri" />
+                                    <small class="text-muted">
+                                        Use: mon, tue, wed, thu, fri, sat, sun
+                                    </small>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="form-group col-md-4">

@@ -25,7 +25,7 @@
                     <li class="nav-item">
                         <router-link :to="{ name: 'dashboard' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-tachometer-alt"></i>
-                            <p>Dashboard</p>
+                            <p>{{ $t('dashboard_main') }}</p>
                         </router-link>
                     </li>
 
@@ -33,7 +33,7 @@
                         <router-link :to="{ name: 'notifications' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-bell"></i>
                             <p>
-                                Notifications
+                                {{ $t('notifications') }}
                                 <span v-if="unreadNotificationCount > 0" class="right badge badge-danger">
                                     {{ unreadNotificationCount > 99 ? "99+" : unreadNotificationCount }}
                                 </span>
@@ -46,20 +46,20 @@
                     <li class="nav-item">
                         <router-link :to="{ name: 'bookings' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-calendar-check"></i>
-                            <p>Bookings</p>
+                            <p>{{ $t('bookings') }}</p>
                         </router-link>
                     </li>
 
                     <li class="nav-item">
                         <router-link :to="{ name: 'bookingscalendar' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-calendar-alt"></i>
-                            <p>Bookings Calendar</p>
+                            <p>{{ $t('bookings_calendar') }}</p>
                         </router-link>
                     </li>
                     <li class="nav-item">
                         <router-link :to="{ name: 'booking-reports' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-chart-bar"></i>
-                            <p>Booking Reports</p>
+                            <p>{{ $t('reports') }}</p>
                         </router-link>
                     </li>
                     <!-- Remove -->
@@ -73,14 +73,14 @@
                     <li class="nav-item">
                         <router-link :to="{ name: 'rooms' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-door-open"></i>
-                            <p>Rooms</p>
+                            <p>{{ $t('rooms') }}</p>
                         </router-link>
                     </li>
 
                     <li class="nav-item">
                         <router-link :to="{ name: 'roomStatusBoard' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-tv"></i>
-                            <p>Room Status Board</p>
+                            <p>{{ $t('room') }} Status Board</p>
                         </router-link>
                     </li>
 
@@ -89,7 +89,7 @@
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'departments' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-building"></i>
-                            <p>Departments</p>
+                            <p>{{ $t('departments') }}</p>
                         </router-link>
                     </li>
 
@@ -98,14 +98,14 @@
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'users' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-users"></i>
-                            <p>Users</p>
+                            <p>{{ $t('users') }}</p>
                         </router-link>
                     </li>
 
                     <li v-if="isAdmin" class="nav-item">
                         <router-link :to="{ name: 'backups' }" class="nav-link" active-class="active">
                             <i class="nav-icon fas fa-database"></i>
-                            <p>Backups</p>
+                            <p>{{ $t('backups') }}</p>
                         </router-link>
                     </li>
                 </ul>
@@ -116,7 +116,7 @@
             <div class="form-inline">
                 <div class="input-group" data-widget="sidebar-search">
                     <input v-model="searchQuery" class="form-control form-control-sidebar" type="search"
-                        placeholder="Search" aria-label="Search" />
+                        :placeholder="$t('search')" aria-label="Search" />
                     <div class="input-group-append">
                         <button @click="clearSearchQuery" type="button" class="btn btn-sidebar">
                             <i class="fas fa-search"></i>
@@ -146,7 +146,7 @@
                 <ul v-else class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu"
                     data-accordion="false">
                     <li class="nav-header d-flex justify-content-between align-items-center">
-                        <span>Recent Chats</span>
+                        <span>{{ $t('chat') }}s</span>
                         <button @click="chatModal.openChatModal" class="btn btn-sm btn-success">
                             New Chat
                         </button>

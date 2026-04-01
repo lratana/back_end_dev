@@ -10,7 +10,7 @@
 
         <ul class="navbar-nav ml-auto">
             <NotificationDropdown />
-
+            <LocaleSwitch />
             <li class="nav-item">
                 <a class="nav-link" data-widget="fullscreen" href="#" role="button">
                     <i class="fas fa-expand-arrows-alt"></i>
@@ -28,4 +28,5 @@
 
 <script setup>
 import NotificationDropdown from "@com/includes/controls/NotificationDropdown.vue";
+import LocaleSwitch from "@com/includes/controls/LocaleSwitch.vue";
 </script>

@@ -164,25 +164,34 @@
                                     placeholder="Chairman name" />
                             </div>
 
-                            <div class="col-md-6 form-group">
-                                <label>Recurrence period</label>
-                                <input type="number" min="1" class="form-control"
-                                    v-model="bookingObject.recurrence_period" :disabled="isRecurrenceNone" />
-                            </div>
+                            <!-- Recurrence Section -->
+                            <div v-if="!isRecurrenceNone" class="col-md-12 form-group">
+                                <!-- <h6 class="text-primary mb-2">
+                                    <i class="fas fa-repeat mr-1"></i> Recurrence Settings
+                                </h6> -->
 
-                            <div class="col-md-6 form-group">
-                                <label>Recurrence until</label>
-                                <input type="date" class="form-control" v-model="bookingObject.recurrence_until"
-                                    :disabled="isRecurrenceNone" />
-                            </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label>Recurrence Period</label>
+                                        <input v-model="bookingObject.recurrence_period" type="number" min="1"
+                                            class="form-control" />
+                                    </div>
 
-                            <div class="col-md-12 form-group">
-                                <label>Recurrence days</label>
-                                <input type="text" class="form-control" v-model="bookingObject.recurrence_days"
-                                    placeholder="mon,tue or wed,fri" :disabled="isRecurrenceNone" />
-                                <small class="text-muted">
-                                    Use day codes: mon, tue, wed, thu, fri, sat, sun
-                                </small>
+                                    <div class="form-group col-md-6">
+                                        <label>Recurrence Until</label>
+                                        <input v-model="bookingObject.recurrence_until" type="date"
+                                            class="form-control" />
+                                    </div>
+
+                                    <div class="form-group col-md-12">
+                                        <label>Recurrence Days</label>
+                                        <input v-model="bookingObject.recurrence_days" type="text" class="form-control"
+                                            placeholder="mon,tue or wed,fri" />
+                                        <small class="text-muted">
+                                            Use: mon, tue, wed, thu, fri, sat, sun
+                                        </small>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="col-md-4 form-group">

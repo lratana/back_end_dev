@@ -1,5 +1,6 @@
 import 'admin-lte/dist/js/adminlte.min.js';
 import 'admin-lte/plugins/bootstrap/js/bootstrap.bundle.min.js';
+import 'flag-icons/css/flag-icons.min.css';
 
 
 import Swal from 'sweetalert2';
@@ -93,6 +94,21 @@ const store = createStore({
 });
 
 
+// i18n
+import { createI18n } from "vue-i18n";
+import { getCurrentLocale, getLocaleMessages } from "@/lang";
+
+const currentLocale = getCurrentLocale();
+
+const i18n = createI18n({
+    legacy: false,
+    locale: currentLocale.prefix, // "km" or "en"
+    fallbackLocale: "km",
+    messages: getLocaleMessages(),
+    globalInjection: true
+});
+
+app.use(i18n);
 app.use(router);
 app.use(store);
 app.mount('#app');

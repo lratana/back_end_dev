@@ -4,12 +4,12 @@
       <div class="container-fluid">
         <div class="row mb-2">
           <div class="col-sm-6">
-            <h1>Dashboard</h1>
+            <h1>{{ $t('dashboard_main') }}</h1>
           </div>
           <div class="col-sm-6">
             <ol class="breadcrumb float-sm-right">
-              <li class="breadcrumb-item"><router-link :to="{ name: 'dashboard' }">Home</router-link></li>
-              <li class="breadcrumb-item active">Dashboard</li>
+              <li class="breadcrumb-item"><router-link :to="{ name: 'dashboard' }">{{ $t('home') }}</router-link></li>
+              <li class="breadcrumb-item active">{{ $t('dashboard_main') }}</li>
             </ol>
           </div>
         </div>
@@ -23,7 +23,7 @@
             <div class="small-box bg-primary">
               <div class="inner">
                 <h3>{{ stats.today }}</h3>
-                <p>Today</p>
+                <p>{{ $t('dashboard.today') }}</p>
               </div>
               <div class="icon"><i class="fas fa-calendar-day"></i></div>
             </div>
@@ -33,7 +33,7 @@
             <div class="small-box bg-success">
               <div class="inner">
                 <h3>{{ stats.upcoming }}</h3>
-                <p>Upcoming</p>
+                <p>{{ $t('dashboard.upcoming') }}</p>
               </div>
               <div class="icon"><i class="fas fa-calendar-check"></i></div>
             </div>
@@ -43,7 +43,7 @@
             <div class="small-box bg-info">
               <div class="inner">
                 <h3>{{ stats.week }}</h3>
-                <p>This Week</p>
+                <p>{{ $t('dashboard.this_week') }}</p>
               </div>
               <div class="icon"><i class="fas fa-calendar-week"></i></div>
             </div>
@@ -53,7 +53,7 @@
             <div class="small-box bg-danger">
               <div class="inner">
                 <h3>{{ stats.cancelled }}</h3>
-                <p>Cancelled</p>
+                <p>{{ $t('status_cancelled') }}</p>
               </div>
               <div class="icon"><i class="fas fa-times-circle"></i></div>
             </div>
@@ -63,26 +63,27 @@
         <div class="card">
           <div class="card-header">
             <div class="d-flex flex-wrap align-items-center" style="gap:10px;">
-              <input class="form-control form-control-sm" style="width:200px" placeholder="Search room..."
+              <input class="form-control form-control-sm" style="width:200px" :placeholder="$t('dashboard.search_room')"
                 v-model="searchRoom" />
 
               <select class="form-control form-control-sm" style="width:180px" v-model="filterStatus">
-                <option value="">All status</option>
-                <option value="pending">pending</option>
-                <option value="approved">approved</option>
-                <option value="rejected">rejected</option>
-                <option value="cancel_requested">cancel_requested</option>
-                <option value="cancelled">cancelled</option>
-                <option value="completed">completed</option>
+                <option value="">{{ $t('dashboard.all_status') }}</option>
+                <option value="pending">{{ $t('pending') }}</option>
+                <option value="approved">{{ $t('approved') }}</option>
+                <option value="rejected">{{ $t('rejected') }}</option>
+                <option value="cancel_requested">{{ $t('cancel_requested') }}</option>
+                <option value="cancelled">{{ $t('cancelled') }}</option>
+                <option value="completed">{{ $t('completed') }}</option>
               </select>
 
               <button class="btn btn-sm btn-primary" @click="fetchDashboard" :disabled="loading">
-                <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i> Refresh
+                <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i> {{ $t('dashboard.refresh') }}
               </button>
 
-              <router-link class="btn btn-sm btn-success ml-auto" :to="{ name: 'bookings' }">New Booking</router-link>
-              <router-link class="btn btn-sm btn-outline-secondary"
-                :to="{ name: 'bookingscalendar' }">Calendar</router-link>
+              <router-link class="btn btn-sm btn-success ml-auto" :to="{ name: 'bookings' }">{{
+                $t('dashboard.new_booking') }}</router-link>
+              <router-link class="btn btn-sm btn-outline-secondary" :to="{ name: 'bookingscalendar' }">{{
+                $t('dashboard.calendar') }}</router-link>
             </div>
           </div>
         </div>
@@ -93,20 +94,22 @@
           <div class="col-lg-6">
             <div class="card card-success">
               <div class="card-header">
-                <h3 class="card-title">Upcoming Bookings</h3>
+                <h3 class="card-title">{{ $t('dashboard.upcoming_bookings') }}</h3>
               </div>
               <div class="card-body p-0">
-                <div v-if="loading" class="p-3 text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                <div v-if="loading" class="p-3 text-center"><i class="fas fa-spinner fa-spin"></i> {{ $t('loading') }}
+                </div>
                 <div v-else>
-                  <div v-if="filteredUpcoming.length === 0" class="p-3 text-muted">No upcoming bookings</div>
+                  <div v-if="filteredUpcoming.length === 0" class="p-3 text-muted">{{
+                    $t('dashboard.no_upcoming_bookings') }}</div>
                   <div v-else class="table-responsive">
                     <table class="table table-striped table-hover mb-0">
                       <thead>
                         <tr>
-                          <th>Room</th>
-                          <th>Start</th>
-                          <th>End</th>
-                          <th>Status</th>
+                          <th>{{ $t('room') }}</th>
+                          <th>{{ $t('dashboard.start') }}</th>
+                          <th>{{ $t('dashboard.end') }}</th>
+                          <th>{{ $t('status') }}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -127,19 +130,21 @@
           <div class="col-lg-6">
             <div class="card card-info">
               <div class="card-header">
-                <h3 class="card-title">Recent Bookings</h3>
+                <h3 class="card-title">{{ $t('dashboard.recent_bookings') }}</h3>
               </div>
               <div class="card-body p-0">
-                <div v-if="loading" class="p-3 text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+                <div v-if="loading" class="p-3 text-center"><i class="fas fa-spinner fa-spin"></i> {{ $t('loading') }}
+                </div>
                 <div v-else>
-                  <div v-if="filteredRecent.length === 0" class="p-3 text-muted">No recent bookings</div>
+                  <div v-if="filteredRecent.length === 0" class="p-3 text-muted">{{ $t('dashboard.no_recent_bookings')
+                    }}</div>
                   <div v-else class="table-responsive">
                     <table class="table table-striped table-hover mb-0">
                       <thead>
                         <tr>
-                          <th>Room</th>
-                          <th>Start</th>
-                          <th>Status</th>
+                          <th>{{ $t('room') }}</th>
+                          <th>{{ $t('dashboard.start') }}</th>
+                          <th>{{ $t('status') }}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -228,7 +233,7 @@ async function fetchDashboard() {
     stats.value.week = res.data?.week ?? 0;
     stats.value.cancelled = res.data?.cancelled ?? 0;
   } catch (e) {
-    error.value = e?.response?.data?.message || e?.message || "Failed to load dashboard";
+    error.value = e?.response?.data?.message || e?.message || $t('dashboard.failed_to_load_dashboard');
   } finally {
     loading.value = false;
   }

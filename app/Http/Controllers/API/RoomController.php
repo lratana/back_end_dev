@@ -62,12 +62,13 @@ class RoomController extends Controller
             $equipmentIds = [];
             foreach (($data['equipment'] ?? []) as $name) {
                 $name = trim($name);
+
                 if ($name === '') {
                     continue;
                 }
 
-                $eq = Equipment::firstOrCreate(['name' => $name]);
-                $equipmentIds[] = $eq->id;
+                $equipment = Equipment::firstOrCreate(['name' => $name]);
+                $equipmentIds[] = $equipment->id;
             }
 
             $room->equipment()->sync($equipmentIds);
@@ -132,12 +133,13 @@ class RoomController extends Controller
 
                 foreach (($data['equipment'] ?? []) as $name) {
                     $name = trim($name);
+
                     if ($name === '') {
                         continue;
                     }
 
-                    $eq = Equipment::firstOrCreate(['name' => $name]);
-                    $equipmentIds[] = $eq->id;
+                    $equipment = Equipment::firstOrCreate(['name' => $name]);
+                    $equipmentIds[] = $equipment->id;
                 }
 
                 $room->equipment()->sync($equipmentIds);
@@ -177,6 +179,7 @@ class RoomController extends Controller
             if ($image->image_path) {
                 Storage::disk('public')->delete($image->image_path);
             }
+
             $image->delete();
         }
 
@@ -196,16 +199,15 @@ class RoomController extends Controller
             ->with([
                 'department',
                 'bookings' => function ($query) use ($now) {
-                    $query->whereIn('status', ['approved'])
+                    $query->where('status', 'approved')
                         ->where(function ($q) use ($now) {
                             $q->where(function ($qq) use ($now) {
                                 $qq->where('start_datetime', '<=', $now)
                                     ->where('end_datetime', '>', $now);
-                            })
-                                ->orWhere('start_datetime', '>', $now);
+                            })->orWhere('start_datetime', '>', $now);
                         })
                         ->orderBy('start_datetime');
-                }
+                },
             ])
             ->orderBy('name')
             ->get();
@@ -296,6 +298,7 @@ class RoomController extends Controller
 
         return response()->json($items);
     }
+
     public function deleteImage(Room $room, RoomImage $image)
     {
         abort_unless($image->room_id === $room->id, 404);
