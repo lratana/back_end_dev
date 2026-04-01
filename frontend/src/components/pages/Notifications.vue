@@ -191,6 +191,7 @@ const columns = computed(() => [
         header: "#",
         cell: ({ row }) => row.index + 1,
         meta: { align: "center" },
+        enableSorting: false,
     },
     {
         accessorKey: "title",
@@ -295,6 +296,7 @@ const columns = computed(() => [
             return h("div", { class: "text-nowrap" }, buttons);
         },
         meta: { align: "center" },
+        enableSorting: false,
     },
 ]);
 

@@ -718,6 +718,8 @@ class BookingController extends Controller
         $todayEnd = now()->copy()->endOfDay();
         $weekStart = now()->copy()->startOfWeek();
         $weekEnd = now()->copy()->endOfWeek();
+        $monthStart = now()->copy()->startOfMonth();
+        $monthEnd = now()->copy()->endOfMonth();
 
         $baseQuery = Booking::with(['room', 'user']);
 
@@ -751,7 +753,14 @@ class BookingController extends Controller
             ])
             ->count();
 
-        $cancelled = (clone $baseQuery)->where('status', 'cancelled')->count();
+        $cancelled = (clone $baseQuery)
+            ->where('status', 'cancelled')
+            ->whereBetween('start_datetime', [
+                $monthStart->toDateTimeString(),
+                $monthEnd->toDateTimeString(),
+            ])
+            ->count();
+
         $pending = (clone $baseQuery)->where('status', 'pending')->count();
         $approved = (clone $baseQuery)->where('status', 'approved')->count();
         $rejected = (clone $baseQuery)->where('status', 'rejected')->count();

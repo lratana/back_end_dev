@@ -27,9 +27,9 @@
                                 <div class="legend-item"><span class="legend-color cancel_requested"></span>{{
                                     $t('cancel_requested') }}</div>
                                 <div class="legend-item"><span class="legend-color cancelled"></span>{{ $t('cancelled')
-                                }}</div>
+                                    }}</div>
                                 <div class="legend-item"><span class="legend-color completed"></span>{{ $t('completed')
-                                }}</div>
+                                    }}</div>
                                 <div class="legend-item"><span class="legend-color expired"></span>{{ $t('expired') }}
                                 </div>
                             </div>
@@ -314,8 +314,6 @@
                 </div>
 
                 <div class="modal-footer justify-content">
-                    <!-- <button class="btn btn-default" type="button" @click="hideDetailModal">Close</button> -->
-
                     <div class="d-flex flex-wrap" style="gap:8px;">
                         <button v-if="selected && canEdit(selected)" class="btn btn-primary" type="button"
                             @click="editFromDetail">
@@ -581,6 +579,18 @@ function formatRecurrenceDays(value) {
     if (!value) return "-";
     if (Array.isArray(value)) return value.join(", ");
     return String(value);
+}
+
+function isPastDateOnly(date) {
+    const d = new Date(date);
+    const now = new Date();
+
+    if (Number.isNaN(d.getTime())) return false;
+
+    d.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+
+    return d < now;
 }
 
 function isPastBooking(booking) {
@@ -879,7 +889,9 @@ function refetch() {
 }
 
 async function onDateSelect(selectInfo) {
-    if (selectInfo.start < new Date()) {
+    error.value = "";
+
+    if (isPastDateOnly(selectInfo.start)) {
         error.value = "You cannot create a booking in the past.";
         return;
     }
@@ -893,6 +905,8 @@ async function onDateSelect(selectInfo) {
 }
 
 async function onDateClick(info) {
+    error.value = "";
+
     const clickedDate = new Date(info.date);
 
     if (Number.isNaN(clickedDate.getTime())) {
@@ -900,7 +914,7 @@ async function onDateClick(info) {
         return;
     }
 
-    if (clickedDate < new Date()) {
+    if (isPastDateOnly(clickedDate)) {
         error.value = "You cannot create a booking in the past.";
         return;
     }
@@ -941,6 +955,11 @@ async function saveBooking() {
 
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
         formError.value = "Invalid datetime";
+        return;
+    }
+
+    if (start < new Date()) {
+        formError.value = "Cannot select past time.";
         return;
     }
 

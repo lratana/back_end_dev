@@ -195,6 +195,15 @@ class RoomController extends Controller
     {
         $now = now();
 
+        // AUTO COMPLETE MEETING
+        DB::table('bookings')
+            ->where('status', 'approved')
+            ->where('end_datetime', '<=', $now)
+            ->update([
+                'status' => 'completed',
+                'updated_at' => $now,
+            ]);
+
         $rooms = Room::query()
             ->with([
                 'department',
