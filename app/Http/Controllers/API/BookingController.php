@@ -346,22 +346,14 @@ class BookingController extends Controller
         $roomId = $request->integer('room_id');
         $status = $request->string('status')->toString();
 
-        $query = Booking::query()
-            ->with(['room', 'user'])
+        $query = Booking::with(['room', 'user'])
+            ->where('end_datetime', '>=', now()) // hide expired
             ->when($roomId, fn($q) => $q->where('room_id', $roomId))
             ->when($status, fn($q) => $q->where('status', $status));
 
-        if (!$this->isAdmin($request)) {
-            $query->where('user_id', $request->user()->id);
+        if (!$this->isAdmin($request)) $query->where('user_id', $request->user()->id);
 
-            return response()->json(
-                $query->orderBy('start_datetime', 'asc')->paginate($perPage)
-            );
-        }
-
-        return response()->json(
-            $query->orderBy('start_datetime', 'desc')->paginate($perPage)
-        );
+        return response()->json($query->orderBy('start_datetime', 'asc')->paginate($perPage));
     }
 
     public function show(Request $request, Booking $booking)
@@ -411,7 +403,49 @@ class BookingController extends Controller
 
         return response()->json($booking, 201);
     }
+    public function addExtraTime(Request $request, Booking $booking)
+    {
+        $isOwner = $booking->user_id === $request->user()->id;
 
+        if (!$isOwner) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($this->isPastBooking($booking)) {
+            return response()->json(['message' => 'Past bookings cannot be updated'], 422);
+        }
+
+        // Allow updates for approved or pending bookings
+        if (!in_array($booking->status, ['pending', 'approved'])) {
+            return response()->json(['message' => 'Booking cannot be extended'], 422);
+        }
+
+        // Use request end_datetime or default to +1 hour
+        $newEnd = $request->input('end_datetime')
+            ? Carbon::parse($request->end_datetime)
+            : $booking->end_datetime->copy()->addHour();
+
+        // Check room conflict
+        if ($this->hasConflict($booking->room_id, $booking->start_datetime, $newEnd, $booking->id)) {
+            return response()->json(['message' => 'Room is already booked for this time'], 422);
+        }
+
+        // Update booking
+        $booking->update(['end_datetime' => $newEnd]);
+        $booking->load(['room', 'user']);
+
+        // Notify admins
+        $this->notifyAdmins(
+            $booking,
+            'Booking Time Updated',
+            "User {$booking->user->name} has updated the booking time for room {$booking->room->name}."
+        );
+
+        return response()->json([
+            'message' => 'Booking time updated successfully. Admins have been notified.',
+            'data' => $booking,
+        ]);
+    }
     public function update(UpdateBookingRequest $request, Booking $booking)
     {
         $isAdmin = $this->isAdmin($request);
@@ -427,20 +461,22 @@ class BookingController extends Controller
             ], 422);
         }
 
-        if ($booking->status !== 'pending') {
-            return response()->json([
-                'message' => 'Only pending bookings can be updated',
-            ], 422);
-        }
-
         $data = $request->validated();
 
+        // Only admins can change status
         if (!$isAdmin && array_key_exists('status', $data)) {
             unset($data['status']);
         }
 
+        // Normalize recurrence days
         if (array_key_exists('recurrence_days', $data)) {
             $data['recurrence_days'] = $this->normalizeRecurrenceDays($data['recurrence_days']);
+        }
+
+        // Handle approved bookings: only allow datetime updates
+        if ($booking->status === 'approved' && !$isAdmin) {
+            // Keep only start_datetime and end_datetime for update
+            $data = array_intersect_key($data, array_flip(['start_datetime', 'end_datetime']));
         }
 
         $roomId = $data['room_id'] ?? $booking->room_id;
@@ -463,6 +499,11 @@ class BookingController extends Controller
 
         $booking->update($data);
         $booking->load(['room', 'user']);
+        $this->notifyAdmins(
+            $booking,
+            'Booking Updated',
+            "Booking #{$booking->id} has been updated. Please review the changes."
+        );
 
         return response()->json($booking);
     }
@@ -479,9 +520,9 @@ class BookingController extends Controller
             ], 422);
         }
 
-        if ($booking->status !== 'approved') {
+        if ($booking->status !== 'approved' && $booking->status !== 'pending') {
             return response()->json([
-                'message' => 'Only approved bookings can request cancellation',
+                'message' => 'Only approved and pending bookings can request cancellation',
             ], 422);
         }
 
@@ -721,7 +762,8 @@ class BookingController extends Controller
         $monthStart = now()->copy()->startOfMonth();
         $monthEnd = now()->copy()->endOfMonth();
 
-        $baseQuery = Booking::with(['room', 'user']);
+        $baseQuery = Booking::with(['room', 'user'])
+            ->where('end_datetime', '>=', $now); // Exclude expired bookings
 
         if (!$this->isAdmin($request)) {
             $baseQuery->where('user_id', $request->user()->id);
@@ -729,7 +771,6 @@ class BookingController extends Controller
 
         $upcoming = (clone $baseQuery)
             ->whereIn('status', ['pending', 'approved'])
-            ->where('start_datetime', '>=', $now)
             ->orderBy('start_datetime')
             ->limit(10)
             ->get();

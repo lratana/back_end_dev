@@ -91,60 +91,51 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-6 mb-3">
                                 <label>Start datetime</label>
-                                <input type="datetime-local" class="form-control" v-model="bookingObject.start_datetime"
+                                <input type="datetime-local" class="form-control" :value="startDateTimeOnlyTime"
+                                    @input="updateStartTime($event.target.value)"
                                     :class="{ 'is-invalid': bookingErr.start_datetime }" />
                                 <div class="invalid-feedback">{{ bookingErr.start_datetime }}</div>
                             </div>
 
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-6 mb-3">
                                 <label>End datetime</label>
-                                <input type="datetime-local" class="form-control" v-model="bookingObject.end_datetime"
+                                <input type="datetime-local" class="form-control" :value="endDateTimeOnlyTime"
+                                    @input="updateEndTime($event.target.value)"
                                     :class="{ 'is-invalid': bookingErr.end_datetime }" />
                                 <div class="invalid-feedback">{{ bookingErr.end_datetime }}</div>
                             </div>
 
-                            <div class="col-md-12 mb-2 d-flex flex-wrap align-items-center" style="gap:8px;">
-                                <button type="button" class="btn btn-outline-info btn-sm"
-                                    :disabled="checkingAvailability || !canCheckAvailability"
-                                    @click="loadAvailableRooms">
+                            <div class="col-12 mb-3 d-flex align-items-center" style="gap:10px;">
+                                <button type="button" class="btn btn-outline-info btn-sm" @click="loadAvailableRooms">
                                     <i class="fas fa-search mr-1" :class="{ 'fa-spin': checkingAvailability }"></i>
                                     {{ checkingAvailability ? "Checking..." : "Refresh Available Rooms" }}
                                 </button>
-
-                                <small class="text-muted">
-                                    ជ្រើសថ្ងៃ/ម៉ោងរួច ប្រព័ន្ធនឹងស្វែងរកបន្ទប់ទំនេរ auto
-                                </small>
+                                <small class="text-muted">After selecting the date/time, the system will automatically
+                                    search for available rooms.</small>
                             </div>
 
                             <div class="col-md-6 form-group">
                                 <label>Room</label>
+                                <!-- Room Selection -->
                                 <select class="form-control" v-model="bookingObject.room_id"
-                                    :class="{ 'is-invalid': bookingErr.room_id }"
-                                    :disabled="!canSelectRoom || checkingAvailability">
-                                    <option value="" disabled>
-                                        {{
-                                            checkingAvailability
-                                                ? "Loading available rooms..."
-                                                : availableRooms.length
-                                                    ? "Select available room..."
-                                                    : "No available room"
-                                        }}
-                                    </option>
+                                    :disabled="!isFieldEditable('room_id') || !canSelectRoom">
+                                    <option value="" disabled>Select available room</option>
                                     <option v-for="r in availableRooms" :key="r.id" :value="String(r.id)">
                                         {{ r.name }} (Capacity: {{ r.capacity ?? "-" }})
                                     </option>
                                 </select>
                                 <div class="invalid-feedback">{{ bookingErr.room_id }}</div>
                                 <small class="text-muted">
-                                    បង្ហាញតែបន្ទប់ទំនេរ តាមថ្ងៃ/ម៉ោងដែលបានជ្រើស
+                                    Show only available rooms according to the selected date/time.
                                 </small>
                             </div>
 
                             <div class="col-md-6 form-group">
                                 <label>Recurrence</label>
-                                <select class="form-control" v-model="bookingObject.recurrence_type">
+                                <select v-model="bookingObject.recurrence_type" class="form-control"
+                                    :disabled="!isFieldEditable('recurrence_type')">
                                     <option value="none">none</option>
                                     <option value="daily">daily</option>
                                     <option value="weekly">weekly</option>
@@ -154,14 +145,16 @@
 
                             <div class="col-md-6 form-group">
                                 <label>Meeting Title</label>
+                                <!-- Meeting Title -->
                                 <input type="text" class="form-control" v-model="bookingObject.meeting_title"
-                                    placeholder="Meeting title" />
+                                    :disabled="!isFieldEditable('meeting_title')" />
                             </div>
 
                             <div class="col-md-6 form-group">
                                 <label>Meeting Chairman</label>
+                                <!-- Meeting Chairman -->
                                 <input type="text" class="form-control" v-model="bookingObject.meeting_chairman"
-                                    placeholder="Chairman name" />
+                                    :disabled="!isFieldEditable('meeting_chairman')" />
                             </div>
 
                             <!-- Recurrence Section -->
@@ -196,7 +189,8 @@
 
                             <div class="col-md-4 form-group">
                                 <label>Snack Required</label>
-                                <select class="form-control" v-model="bookingObject.snack_required">
+                                <select class="form-control" v-model="bookingObject.snack_required"
+                                    :disabled="!isFieldEditable('snack_required')">
                                     <option :value="false">No</option>
                                     <option :value="true">Yes</option>
                                 </select>
@@ -204,13 +198,15 @@
 
                             <div class="col-md-8 form-group">
                                 <label>Snack Note</label>
+                                <!-- Snack Note -->
                                 <input type="text" class="form-control" v-model="bookingObject.snack_note"
-                                    placeholder="Snack detail" :disabled="!bookingObject.snack_required" />
+                                    :disabled="!isFieldEditable('snack_note') || !bookingObject.snack_required" />
                             </div>
 
                             <div class="col-md-4 form-group">
                                 <label>Technician Required</label>
-                                <select class="form-control" v-model="bookingObject.technician_required">
+                                <select class="form-control" v-model="bookingObject.technician_required"
+                                    :disabled="!isFieldEditable('technician_required')">
                                     <option :value="false">No</option>
                                     <option :value="true">Yes</option>
                                 </select>
@@ -218,8 +214,10 @@
 
                             <div class="col-md-8 form-group">
                                 <label>Technician Note</label>
+                                <!-- Technician Note -->
                                 <input type="text" class="form-control" v-model="bookingObject.technician_note"
-                                    placeholder="Technician detail" :disabled="!bookingObject.technician_required" />
+                                    placeholder="Technician detail"
+                                    :disabled="!isFieldEditable('technician_note') || !bookingObject.technician_required" />
                             </div>
 
                             <div class="col-12">
@@ -234,7 +232,6 @@
                         <button type="button" class="btn btn-default" @click="hideBookingModal">
                             Close
                         </button>
-
                         <button type="submit" class="btn btn-primary" :disabled="saving || !canEditBookingForm">
                             {{ saving ? "Saving..." : "Save changes" }}
                         </button>
@@ -530,16 +527,35 @@ function fmtDateOnly(dt) {
 
 function toLocalInput(dt) {
     if (!dt) return "";
-    const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return "";
 
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const ii = String(d.getMinutes()).padStart(2, "0");
+    // Expecting dt in "YYYY-MM-DD HH:MM:SS" or ISO format from backend
+    const dateTimeStr = String(dt).replace(" ", "T").slice(0, 16);
+    // slice(0,16) ensures "YYYY-MM-DDTHH:MM" format required by datetime-local
+    return dateTimeStr;
+}
 
-    return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
+const startDateTimeOnlyTime = computed(() => {
+    if (!bookingObject.start_datetime) return "";
+    const [date, time] = bookingObject.start_datetime.split("T");
+    return `${date}T${time}`; // keeps original date
+});
+
+const endDateTimeOnlyTime = computed(() => {
+    if (!bookingObject.end_datetime) return "";
+    const [date, time] = bookingObject.end_datetime.split("T");
+    return `${date}T${time}`; // keeps original date
+});
+// When user changes time, keep the original date and only update the time part
+function updateStartTime(value) {
+    if (!bookingObject.start_datetime) return;
+    const [date] = bookingObject.start_datetime.split("T");
+    bookingObject.start_datetime = `${date}T${value.split("T")[1]}`;
+}
+// When user changes time, keep the original date and only update the time part
+function updateEndTime(value) {
+    if (!bookingObject.end_datetime) return;
+    const [date] = bookingObject.end_datetime.split("T");
+    bookingObject.end_datetime = `${date}T${value.split("T")[1]}`;
 }
 
 function toMysqlDatetime(value) {
@@ -715,10 +731,26 @@ watch(
     }
 );
 
+const isApprovedBooking = computed(() => bookingObject.status === "approved");
+
+// Fields editable only for pending bookings
+const isFieldEditable = (fieldName) => {
+    if (isApprovedBooking.value) {
+        return fieldName === "start_datetime" || fieldName === "end_datetime";
+    }
+    return true; // All fields editable if not approved
+};
+
 const canEditBookingForm = computed(() => {
     if (!bookingObject.id) return true;
-    return bookingObject.status === "pending" && !isPastBooking(bookingObject);
+
+    if (isApprovedBooking.value) {
+        // Allow saving only Start and End datetime
+        return !isPastBooking(bookingObject);
+    }
+    return (bookingObject.status === "pending") && !isPastBooking(bookingObject);
 });
+
 
 function resetData() {
     Object.assign(bookingObject, { ...defaultBookingObject });
@@ -766,7 +798,7 @@ function hideDetailModal() {
 function canOpenEdit(booking) {
     if (!booking) return false;
     if (isPastBooking(booking)) return false;
-    return booking.status === "pending";
+    return booking.status === "pending" || booking.status === "approved";
 }
 
 function canRequestCancel(booking) {
@@ -847,8 +879,20 @@ async function loadAll() {
     await loadBookings();
 }
 
-function openCreate() {
+async function openCreate() {
     resetData();
+
+    // Preload all rooms first
+    await loadRooms();
+
+    // Set default start/end datetime
+    const now = new Date();
+    bookingObject.start_datetime = toLocalInput(new Date(now.getTime() + 15 * 60000)); // +15 min
+    bookingObject.end_datetime = toLocalInput(new Date(now.getTime() + 75 * 60000)); // +1 hr
+
+    // Load available rooms for default datetime
+    await loadAvailableRooms(true);
+
     showBookingModal();
 }
 
@@ -900,9 +944,9 @@ async function fillFormFromBooking(booking) {
     availableRooms.value = [];
     availabilityMessage.value = "កំពុងស្វែងរកបន្ទប់ទំនេរ...";
 
+    // Preload available rooms for the selected room
     await loadAvailableRooms(true, booking.room_id);
 }
-
 async function editFromDetail() {
     if (!selectedBooking.value) return;
 
@@ -921,87 +965,22 @@ function validateBookingForm() {
     Object.assign(bookingErr, { ...defaultBookingErr });
 
     if (!bookingObject.start_datetime) {
-        bookingErr.start_datetime = "Start datetime is required.";
-        formError.value = "Please select start datetime";
+        bookingErr.start_datetime = "Start datetime is required";
         return false;
     }
-
     if (!bookingObject.end_datetime) {
-        bookingErr.end_datetime = "End datetime is required.";
-        formError.value = "Please select end datetime";
+        bookingErr.end_datetime = "End datetime is required";
+        return false;
+    }
+    if (!bookingObject.room_id) {
+        bookingErr.room_id = "Room is required";
         return false;
     }
 
     const start = new Date(normalizeDt(bookingObject.start_datetime));
     const end = new Date(normalizeDt(bookingObject.end_datetime));
-
-    if (Number.isNaN(start.getTime())) {
-        bookingErr.start_datetime = "Invalid start datetime.";
-        formError.value = "Invalid start datetime";
-        return false;
-    }
-
-    if (Number.isNaN(end.getTime())) {
-        bookingErr.end_datetime = "Invalid end datetime.";
-        formError.value = "Invalid end datetime";
-        return false;
-    }
-
     if (end <= start) {
-        bookingErr.end_datetime = "End datetime must be after start datetime.";
-        formError.value = "End datetime must be after start datetime";
-        return false;
-    }
-
-    const now = new Date();
-
-    if (!bookingObject.id && start < now) {
-        bookingErr.start_datetime = "Start datetime cannot be in the past.";
-        formError.value = "Start datetime cannot be in the past";
-        return false;
-    }
-
-    if (!bookingObject.room_id) {
-        bookingErr.room_id = "Room is required.";
-        formError.value = "Please select available room";
-        return false;
-    }
-
-    const recurrenceDays = parseRecurrenceDays(bookingObject.recurrence_days);
-    const recurrencePeriod = bookingObject.recurrence_period
-        ? Number(bookingObject.recurrence_period)
-        : null;
-
-    if (bookingObject.recurrence_type === "weekly" && (!recurrenceDays || recurrenceDays.length === 0)) {
-        formError.value = "Weekly recurrence requires at least one recurrence day.";
-        return false;
-    }
-
-    if (bookingObject.recurrence_type !== "none" && !recurrencePeriod) {
-        formError.value = "Recurrence period is required for recurring bookings.";
-        return false;
-    }
-
-    if (bookingObject.recurrence_type !== "none" && !bookingObject.recurrence_until) {
-        formError.value = "Recurrence until is required for recurring bookings.";
-        return false;
-    }
-
-    if (bookingObject.recurrence_type !== "none" && bookingObject.recurrence_until) {
-        const startDateOnly = bookingObject.start_datetime.slice(0, 10);
-        if (bookingObject.recurrence_until < startDateOnly) {
-            formError.value = "Recurrence until must be on or after start date.";
-            return false;
-        }
-    }
-
-    if (bookingObject.snack_required && !String(bookingObject.snack_note || "").trim()) {
-        formError.value = "Please enter snack note.";
-        return false;
-    }
-
-    if (bookingObject.technician_required && !String(bookingObject.technician_note || "").trim()) {
-        formError.value = "Please enter technician note.";
+        bookingErr.end_datetime = "End datetime must be after start";
         return false;
     }
 
@@ -1056,7 +1035,7 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
         const preferredId = preferredRoomId ?? currentSelectedRoomId;
 
         if (availableRooms.value.length) {
-            availabilityMessage.value = `មានបន្ទប់ទំនេរ ${availableRooms.value.length} បន្ទប់។ សូមជ្រើសរើសបន្ទប់។`;
+            availabilityMessage.value = `There are ${availableRooms.value.length} available rooms. Please select a room.`;
 
             if (preferredId) {
                 const matched = availableRooms.value.find((r) => Number(r.id) === Number(preferredId));
@@ -1067,7 +1046,7 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
                 }
             }
         } else {
-            availabilityMessage.value = "មិនមានបន្ទប់ទំនេរ សម្រាប់ថ្ងៃ និងម៉ោងដែលបានជ្រើសទេ។";
+            availabilityMessage.value = "No available rooms for the selected date and time.";
             bookingObject.room_id = currentSelectedRoomId || "";
         }
     } catch (e) {
@@ -1084,82 +1063,118 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
     }
 }
 
-async function saveBooking() {
-    saving.value = true;
+async function saveExtraTime() {
     formError.value = "";
-    Object.assign(bookingErr, { ...defaultBookingErr });
 
+    if (!bookingForm.id) {
+        formError.value = "Please select a booking to extend.";
+        return;
+    }
+
+    if (!bookingForm.start_datetime || !bookingForm.end_datetime) {
+        formError.value = "Please select start and end datetime.";
+        return;
+    }
+
+    const start = new Date(normalizeDt(bookingForm.start_datetime));
+    const end = new Date(normalizeDt(bookingForm.end_datetime));
+
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        formError.value = "Invalid datetime format.";
+        return;
+    }
+
+    if (start < new Date()) {
+        formError.value = "Cannot select past time.";
+        return;
+    }
+
+    if (end <= start) {
+        formError.value = "End datetime must be after start datetime.";
+        return;
+    }
+
+    // Check room availability first
+    checkingAvailability.value = true;
     try {
-        if (!validateBookingForm()) {
-            saving.value = false;
+        const res = await apiGetAvailableRooms({
+            start_datetime: toMysqlDatetime(bookingForm.start_datetime),
+            end_datetime: toMysqlDatetime(bookingForm.end_datetime),
+            ignore_id: bookingForm.id,
+        });
+
+        if (!res.data?.data?.length) {
+            formError.value = "No available room at this time.";
             return;
         }
+    } catch (e) {
+        formError.value = "Failed to check room availability.";
+        return;
+    } finally {
+        checkingAvailability.value = false;
+    }
 
+    saving.value = true;
+
+    try {
         LoadingModal();
 
-        const recurrenceDays = parseRecurrenceDays(bookingObject.recurrence_days);
-        const recurrencePeriod = bookingObject.recurrence_period
-            ? Number(bookingObject.recurrence_period)
-            : null;
+        const payload = {
+            end_datetime: toMysqlDatetime(bookingForm.end_datetime), // optional, backend +1h if not set
+        };
 
+        const response = await apiAddExtraTime(bookingForm.id, payload);
+
+        hideCreateModal();
+        CloseModal();
+        refetch();
+
+        MessageModal(
+            "success",
+            "Success",
+            response?.data?.message || "Booking time extended. Admins have been notified."
+        );
+    } catch (e) {
+        CloseModal();
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to extend booking."
+        );
+    } finally {
+        saving.value = false;
+    }
+}
+
+async function saveBooking() {
+    if (!validateBookingForm()) return;
+
+    saving.value = true;
+    formError.value = "";
+
+    try {
         const payload = {
             room_id: Number(bookingObject.room_id),
             start_datetime: toMysqlDatetime(bookingObject.start_datetime),
             end_datetime: toMysqlDatetime(bookingObject.end_datetime),
-            recurrence_type: bookingObject.recurrence_type || "none",
-            recurrence_days: recurrenceDays,
-            recurrence_period: recurrencePeriod,
-            recurrence_until: bookingObject.recurrence_until || null,
             meeting_title: bookingObject.meeting_title || null,
             meeting_chairman: bookingObject.meeting_chairman || null,
-            snack_required: !!bookingObject.snack_required,
-            snack_note: bookingObject.snack_required ? (bookingObject.snack_note || null) : null,
-            technician_required: !!bookingObject.technician_required,
-            technician_note: bookingObject.technician_required ? (bookingObject.technician_note || null) : null,
+            snack_required: bookingObject.snack_required,
+            snack_note: bookingObject.snack_required ? bookingObject.snack_note : null,
+            technician_required: bookingObject.technician_required,
+            technician_note: bookingObject.technician_required ? bookingObject.technician_note : null,
         };
 
-        let response = null;
+        const response = bookingObject.id
+            ? await apiUpdateBooking(bookingObject.id, payload)
+            : await apiCreateBooking(payload);
 
-        if (bookingObject.id) {
-            response = await apiUpdateBooking(bookingObject.id, payload);
-            onBookingUpdate(response.data?.data ?? response.data?.booking ?? response.data);
-        } else {
-            response = await apiCreateBooking(payload);
-            onBookingCreate(response.data?.data ?? response.data?.booking ?? response.data);
-        }
-
+        onBookingCreate(response.data?.data ?? response.data);
         hideBookingModal();
-        CloseModal();
-        MessageModal("success", "Success", response.data?.message || "Saved");
+        Swal.fire({ icon: "success", title: "Booking saved successfully", toast: true, position: "top-end", timer: 2000 });
     } catch (e) {
-        CloseModal();
-
-        if (!e.response) {
-            saving.value = false;
-            return MessageModal("error", "Error", e.message);
-        }
-
-        if (e.response.status === 422) {
-            const errors = e.response.data.errors || {};
-
-            Object.keys(bookingErr).forEach((k) => {
-                bookingErr[k] = errors[k]?.[0] || "";
-            });
-
-            if (!Object.keys(errors).length && e.response.data.message) {
-                formError.value = e.response.data.message;
-            } else if (Object.keys(errors).length) {
-                formError.value = e.response.data.message || "Validation failed.";
-            }
-
-            saving.value = false;
-            return;
-        }
-
-        saving.value = false;
-        return MessageModal("error", "Error", e.response.data.message || "Save failed");
+        formError.value = e?.response?.data?.message || "Failed to save booking";
     } finally {
-        CloseModal();
         saving.value = false;
     }
 }
