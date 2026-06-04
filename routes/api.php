@@ -139,6 +139,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/confirm-cancel/{booking}', [BookingController::class, 'confirmCancel']);
         Route::put('/admin-cancel/{booking}', [BookingController::class, 'adminCancel']);
         Route::delete('/delete/{booking}', [BookingController::class, 'destroy']);
+        Route::put('/extend-time/{booking}', [BookingController::class, 'addExtraTime']);
     });
     // Booking Reports
     Route::prefix('booking-reports')->group(function () {

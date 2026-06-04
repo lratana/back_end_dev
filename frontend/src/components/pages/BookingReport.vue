@@ -1,54 +1,77 @@
 <template>
-    <div class="content-wrapper" style="min-height: 1416px">
-        <section class="content-header pb-2">
+    <div class="content-wrapper booking-report-page">
+        <!-- Header -->
+        <section class="content-header report-hero">
             <div class="container-fluid">
-                <div class="d-flex flex-wrap justify-content-between align-items-start" style="gap: 12px;">
-                    <div>
-                        <h1 class="mb-1 font-weight-bold">Booking Reports</h1>
-                        <div class="text-muted">
-                            {{ currentPeriodLabel }}
+                <div class="report-hero-card">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center" style="gap: 16px;">
+                        <div>
+                            <div class="report-eyebrow">Booking Analytics</div>
+                            <h1 class="report-title">Booking Reports</h1>
+                            <p class="report-subtitle mb-0">
+                                {{ currentPeriodLabel }}
+                            </p>
+                        </div>
+
+                        <div class="report-actions">
+                            <button class="btn btn-light report-action-btn" :disabled="loading" @click="loadReport">
+                                <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': loading }"></i>
+                                Refresh
+                            </button>
+
+                            <button class="btn btn-success report-action-btn" :disabled="loading || !hasReportData"
+                                @click="exportExcel">
+                                <i class="fas fa-file-excel mr-1"></i>
+                                Excel
+                            </button>
+
+                            <button class="btn btn-danger report-action-btn" :disabled="loading || !hasReportData"
+                                @click="exportPdf">
+                                <i class="fas fa-file-pdf mr-1"></i>
+                                PDF
+                            </button>
                         </div>
                     </div>
 
-                    <div class="d-flex flex-wrap" style="gap: 8px;">
-                        <button class="btn btn-outline-primary" :disabled="loading" @click="loadReport">
-                            <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': loading }"></i>
-                            Refresh
-                        </button>
-
-                        <button class="btn btn-success" :disabled="loading || !hasReportData" @click="exportExcel">
-                            <i class="fas fa-file-excel mr-1"></i>
-                            Excel
-                        </button>
-
-                        <button class="btn btn-danger" :disabled="loading || !hasReportData" @click="exportPdf">
-                            <i class="fas fa-file-pdf mr-1"></i>
-                            PDF
-                        </button>
+                    <div class="report-breadcrumb mt-3">
+                        <router-link :to="{ name: 'dashboard' }">Home</router-link>
+                        <span>/</span>
+                        <strong>Booking Reports</strong>
                     </div>
                 </div>
-
-                <ol class="breadcrumb float-sm-right mt-2 mb-0">
-                    <li class="breadcrumb-item">
-                        <router-link :to="{ name: 'dashboard' }">Home</router-link>
-                    </li>
-                    <li class="breadcrumb-item active">Booking Reports</li>
-                </ol>
             </div>
         </section>
 
-        <section class="content pt-2">
+        <section class="content report-content">
             <div class="container-fluid">
-                <!-- Filter Card -->
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white border-bottom">
-                        <h3 class="card-title mb-0 font-weight-bold">Filters</h3>
-                    </div>
-
+                <!-- Filters -->
+                <div class="card report-filter-card">
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-lg-2 col-md-3 form-group">
-                                <label class="font-weight-semibold">Report Type</label>
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3"
+                            style="gap: 12px;">
+                            <div>
+                                <h3 class="section-title mb-1">Report Filters</h3>
+                                <div class="section-subtitle">
+                                    Choose period, status, and user to generate the report.
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-wrap" style="gap: 8px;">
+                                <button class="btn btn-primary px-4" :disabled="loading" @click="loadReport">
+                                    <i class="fas fa-search mr-1" :class="{ 'fa-spin': loading }"></i>
+                                    Generate
+                                </button>
+
+                                <button class="btn btn-outline-secondary px-4" :disabled="loading"
+                                    @click="resetFilters">
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="filter-grid">
+                            <div class="filter-item">
+                                <label>Report Type</label>
                                 <select class="form-control" v-model="filters.type">
                                     <option value="daily">Daily</option>
                                     <option value="monthly">Monthly</option>
@@ -56,13 +79,13 @@
                                 </select>
                             </div>
 
-                            <div class="col-lg-2 col-md-3 form-group" v-if="filters.type === 'daily'">
-                                <label class="font-weight-semibold">Date</label>
+                            <div class="filter-item" v-if="filters.type === 'daily'">
+                                <label>Date</label>
                                 <input type="date" class="form-control" v-model="filters.date" />
                             </div>
 
-                            <div class="col-lg-2 col-md-3 form-group" v-if="filters.type === 'monthly'">
-                                <label class="font-weight-semibold">Month</label>
+                            <div class="filter-item" v-if="filters.type === 'monthly'">
+                                <label>Month</label>
                                 <select class="form-control" v-model="filters.month">
                                     <option v-for="m in 12" :key="m" :value="m">
                                         {{ monthName(m) }}
@@ -70,17 +93,16 @@
                                 </select>
                             </div>
 
-                            <div class="col-lg-2 col-md-3 form-group"
-                                v-if="filters.type === 'monthly' || filters.type === 'yearly'">
-                                <label class="font-weight-semibold">Year</label>
+                            <div class="filter-item" v-if="filters.type === 'monthly' || filters.type === 'yearly'">
+                                <label>Year</label>
                                 <input type="number" class="form-control" v-model="filters.year" min="2000"
                                     max="2100" />
                             </div>
 
-                            <div class="col-lg-2 col-md-3 form-group">
-                                <label class="font-weight-semibold">Status</label>
+                            <div class="filter-item">
+                                <label>Status</label>
                                 <select class="form-control" v-model="filters.status">
-                                    <option value="">All</option>
+                                    <option value="">All Status</option>
                                     <option value="pending">Pending</option>
                                     <option value="approved">Approved</option>
                                     <option value="rejected">Rejected</option>
@@ -90,8 +112,8 @@
                                 </select>
                             </div>
 
-                            <div class="col-lg-4 col-md-6 form-group position-relative" v-if="isAdmin">
-                                <label class="font-weight-semibold">User</label>
+                            <div class="filter-item user-filter" v-if="isAdmin">
+                                <label>User</label>
 
                                 <div class="chip-select-box" @click="focusUserInput">
                                     <span v-if="selectedUserObject" class="chip-item">
@@ -111,7 +133,7 @@
                                     class="chip-dropdown">
                                     <button v-for="u in filteredUsers" :key="u.id" type="button"
                                         class="chip-dropdown-item" @click="selectUser(u)">
-                                        <div class="font-weight-semibold">{{ u.name }}</div>
+                                        <div class="font-weight-bold">{{ u.name }}</div>
                                         <small class="text-muted">{{ u.email }}</small>
                                     </button>
                                 </div>
@@ -121,138 +143,144 @@
                                 </small>
                             </div>
                         </div>
-
-                        <div class="d-flex flex-wrap" style="gap: 10px;">
-                            <button class="btn btn-primary px-4" :disabled="loading" @click="loadReport">
-                                <i class="fas fa-search mr-1" :class="{ 'fa-spin': loading }"></i>
-                                Generate Report
-                            </button>
-
-                            <button class="btn btn-light border" :disabled="loading" @click="resetFilters">
-                                Reset
-                            </button>
-                        </div>
                     </div>
                 </div>
 
-                <div v-if="error" class="alert alert-danger mt-3 shadow-sm">
+                <!-- Error -->
+                <div v-if="error" class="alert alert-danger report-alert">
+                    <i class="fas fa-exclamation-circle mr-1"></i>
                     {{ error }}
                 </div>
 
-                <!-- Meta Strip -->
-                <div v-if="report" class="card mt-3 shadow-sm border-0">
-                    <div class="card-body py-3">
-                        <div class="d-flex flex-wrap align-items-center" style="gap: 10px;">
-                            <span class="badge badge-light border px-3 py-2">
-                                <strong>Type:</strong> {{ reportLabel }}
-                            </span>
+                <!-- Meta -->
+                <div v-if="report" class="report-meta-strip">
+                    <div class="meta-pill">
+                        <span>Type</span>
+                        <strong>{{ reportLabel }}</strong>
+                    </div>
 
-                            <span v-if="report.type === 'daily'" class="badge badge-light border px-3 py-2">
-                                <strong>Date:</strong> {{ report.date || "-" }}
-                            </span>
+                    <div v-if="report.type === 'daily'" class="meta-pill">
+                        <span>Date</span>
+                        <strong>{{ report.date || "-" }}</strong>
+                    </div>
 
-                            <span v-if="report.type === 'monthly'" class="badge badge-light border px-3 py-2">
-                                <strong>Month:</strong> {{ monthName(report.month) }}
-                            </span>
+                    <div v-if="report.type === 'monthly'" class="meta-pill">
+                        <span>Month</span>
+                        <strong>{{ monthName(report.month) }}</strong>
+                    </div>
 
-                            <span v-if="report.type === 'monthly' || report.type === 'yearly'"
-                                class="badge badge-light border px-3 py-2">
-                                <strong>Year:</strong> {{ report.year || "-" }}
-                            </span>
+                    <div v-if="report.type === 'monthly' || report.type === 'yearly'" class="meta-pill">
+                        <span>Year</span>
+                        <strong>{{ report.year || "-" }}</strong>
+                    </div>
 
-                            <span class="badge badge-light border px-3 py-2">
-                                <strong>Status:</strong> {{ filters.status || "All" }}
-                            </span>
+                    <div class="meta-pill">
+                        <span>Status</span>
+                        <strong>{{ filters.status || "All" }}</strong>
+                    </div>
 
-                            <span v-if="isAdmin" class="badge badge-light border px-3 py-2">
-                                <strong>User:</strong> {{ selectedUserLabel }}
-                            </span>
-                        </div>
+                    <div v-if="isAdmin" class="meta-pill meta-pill-wide">
+                        <span>User</span>
+                        <strong>{{ selectedUserLabel }}</strong>
                     </div>
                 </div>
 
-                <!-- Empty State -->
-                <div v-if="report && !loading && !hasReportData" class="card mt-3 shadow-sm border-0">
-                    <div class="card-body text-center py-5">
-                        <div class="mb-3">
-                            <i class="fas fa-folder-open fa-3x text-muted"></i>
-                        </div>
-                        <h5 class="mb-2">No bookings found</h5>
-                        <div class="text-muted">
-                            Try changing date, status, or user filter.
-                        </div>
+                <!-- Empty -->
+                <div v-if="report && !loading && !hasReportData" class="empty-report-card">
+                    <div class="empty-icon">
+                        <i class="fas fa-folder-open"></i>
                     </div>
+                    <h5>No bookings found</h5>
+                    <p>Try changing date, status, or user filter.</p>
                 </div>
 
-                <!-- KPI Cards -->
-                <div class="row mt-3" v-if="report">
-                    <div class="col-xl col-lg-3 col-md-4 col-sm-6 mb-3" v-for="card in statCards" :key="card.key">
-                        <div class="card border-0 shadow-sm h-100 report-stat-card">
-                            <div class="card-body text-center py-4">
-                                <div class="report-stat-icon mb-2">
-                                    <i :class="card.icon"></i>
-                                </div>
-                                <h3 class="mb-1 font-weight-bold">{{ report.stats?.[card.key] ?? 0 }}</h3>
-                                <div class="text-muted small">{{ card.label }}</div>
+                <!-- KPI -->
+                <div class="stats-grid" v-if="report">
+                    <button v-for="card in statCards" :key="card.key" type="button" class="stat-card"
+                        :class="{ active: filters.status === card.key || (card.key === 'total' && !filters.status) }"
+                        @click="applyStatusFromCard(card.key)">
+                        <div class="stat-icon">
+                            <i :class="card.icon"></i>
+                        </div>
+
+                        <div class="stat-body">
+                            <h3>{{ report.stats?.[card.key] ?? 0 }}</h3>
+                            <p>{{ card.label }}</p>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Chart + Summary -->
+                <div class="report-main-grid" v-if="report">
+                    <div class="card report-card chart-card">
+                        <div class="card-header report-card-header">
+                            <div>
+                                <h3>Summary Chart</h3>
+                                <span>Overview by selected period</span>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            <div v-if="hasSummaryData" class="chart-box">
+                                <Bar :data="chartData" :options="chartOptions" />
+                            </div>
+
+                            <div v-else class="text-center text-muted py-5">
+                                No summary data
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Chart -->
-                <div class="card mt-2 shadow-sm border-0" v-if="report">
-                    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0 font-weight-bold">Summary Chart</h3>
-                        <span class="text-muted small">Overview by selected period</span>
-                    </div>
-                    <div class="card-body">
-                        <div v-if="hasSummaryData" style="height: 360px;">
-                            <Bar :data="chartData" :options="chartOptions" />
+                    <div class="card report-card summary-card">
+                        <div class="card-header report-card-header">
+                            <div>
+                                <h3>Summary Details</h3>
+                                <span>Total by label</span>
+                            </div>
                         </div>
-                        <div v-else class="text-center text-muted py-5">
-                            No summary data
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Summary Table -->
-                <div class="card mt-3 shadow-sm border-0" v-if="report">
-                    <div class="card-header bg-white border-bottom">
-                        <h3 class="card-title mb-0 font-weight-bold">Summary Details</h3>
-                    </div>
-                    <div class="card-body p-0">
-                        <table class="table table-hover table-bordered table-sm mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th style="width: 70px;">#</th>
-                                    <th>Label</th>
-                                    <th style="width: 140px;">Count</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="!report.summary?.length">
-                                    <td colspan="3" class="text-center text-muted py-3">No summary data</td>
-                                </tr>
-                                <tr v-for="(item, index) in report.summary || []" :key="`${item.label}-${index}`">
-                                    <td>{{ index + 1 }}</td>
-                                    <td>{{ item.label }}</td>
-                                    <td>{{ item.count }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="card-body p-0">
+                            <table class="table table-hover mb-0 report-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 70px;">#</th>
+                                        <th>Label</th>
+                                        <th style="width: 110px;" class="text-right">Count</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    <tr v-if="!report.summary?.length">
+                                        <td colspan="3" class="text-center text-muted py-4">
+                                            No summary data
+                                        </td>
+                                    </tr>
+
+                                    <tr v-for="(item, index) in report.summary || []" :key="`${item.label}-${index}`">
+                                        <td>{{ index + 1 }}</td>
+                                        <td class="font-weight-semibold">{{ item.label }}</td>
+                                        <td class="text-right">
+                                            <span class="count-pill">{{ item.count }}</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Details -->
-                <div class="card mt-3 shadow-sm border-0" v-if="report">
-                    <div class="card-header bg-white border-bottom">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center" style="gap: 10px;">
-                            <h3 class="card-title mb-0 font-weight-bold">Booking Details</h3>
+                <div class="card report-card details-card" v-if="report">
+                    <div class="card-header report-card-header details-header">
+                        <div>
+                            <h3>Booking Details</h3>
+                            <span>{{ filteredReportData.length }} record(s)</span>
+                        </div>
 
-                            <div style="min-width: 280px;">
-                                <input type="text" class="form-control form-control-sm" v-model="detailSearch"
-                                    placeholder="Search room, user, title, chairman, status..." />
-                            </div>
+                        <div class="detail-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" v-model="detailSearch"
+                                placeholder="Search room, user, title, chairman, status..." />
                         </div>
                     </div>
 
@@ -261,6 +289,7 @@
                             <CustomTable :title="'Report Bookings'" :data="filteredReportData" :columns="columns"
                                 :pageSize="25" />
                         </div>
+
                         <div v-else class="text-center text-muted py-4">
                             No detailed bookings available.
                         </div>
@@ -334,9 +363,11 @@ const currentPeriodLabel = computed(() => {
     if (filters.type === "daily") {
         return `Daily Report - ${filters.date || "-"}`;
     }
+
     if (filters.type === "monthly") {
         return `Monthly Report - ${monthName(filters.month)} ${filters.year}`;
     }
+
     return `Yearly Report - ${filters.year}`;
 });
 
@@ -347,7 +378,9 @@ const selectedUserObject = computed(() => {
 
 const selectedUserLabel = computed(() => {
     if (!filters.user_id) return "All Users";
+
     const found = users.value.find((u) => String(u.id) === String(filters.user_id));
+
     return found ? `${found.name} (${found.email})` : filters.user_id;
 });
 
@@ -455,11 +488,22 @@ function fmt(dt) {
 
 function monthName(month) {
     const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
     ];
 
     const index = Number(month) - 1;
+
     return months[index] || month || "-";
 }
 
@@ -513,6 +557,11 @@ function resetFilters() {
     detailSearch.value = "";
     report.value = null;
     error.value = "";
+}
+
+function applyStatusFromCard(key) {
+    filters.status = key === "total" ? "" : key;
+    loadReport();
 }
 
 function buildExtraFilters() {
@@ -589,6 +638,7 @@ function exportPdf() {
         doc.text(title, 14, 15);
 
         let subtitle = "";
+
         if (report.value?.type === "daily") {
             subtitle = `Date: ${report.value?.date || filters.date}`;
         } else if (report.value?.type === "monthly") {
@@ -602,16 +652,18 @@ function exportPdf() {
 
         autoTable(doc, {
             startY: 28,
-            head: [[
-                "No",
-                "Room",
-                "User",
-                "Meeting Title",
-                "Chairman",
-                "Start",
-                "End",
-                "Status",
-            ]],
+            head: [
+                [
+                    "No",
+                    "Room",
+                    "User",
+                    "Meeting Title",
+                    "Chairman",
+                    "Start",
+                    "End",
+                    "Status",
+                ],
+            ],
             body: rows.map((row) => [
                 row.No,
                 row.Room,
@@ -641,7 +693,11 @@ async function loadUsers() {
     if (!isAdmin.value) return;
 
     try {
-        const res = await apiGetDetailUsers({ per_page: 500, page: 1 });
+        const res = await apiGetDetailUsers({
+            per_page: 500,
+            page: 1,
+        });
+
         users.value = res.data?.data ?? [];
     } catch (e) {
         console.log("loadUsers error", e);
@@ -741,30 +797,365 @@ const columns = [
         accessorKey: "status",
         cell: ({ getValue }) =>
             h("span", { class: ["badge", statusBadge(getValue())] }, getValue()),
-        meta: { align: "center" },
+        meta: {
+            align: "center",
+        },
     },
 ];
 </script>
 
 <style scoped>
-.report-stat-card {
-    transition: all 0.2s ease;
+.booking-report-page {
+    background: #f4f7fb;
+    min-height: 100vh;
+}
+
+.report-hero {
+    padding: 18px 0 10px;
+}
+
+.report-hero-card {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 45%, #084298 100%);
+    color: #fff;
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 16px 40px rgba(13, 110, 253, 0.22);
+}
+
+.report-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 12px;
+    font-weight: 800;
+    opacity: 0.85;
+    margin-bottom: 6px;
+}
+
+.report-title {
+    margin: 0;
+    font-size: 34px;
+    font-weight: 900;
+}
+
+.report-subtitle {
+    opacity: 0.88;
+    font-size: 15px;
+}
+
+.report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.report-action-btn {
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-weight: 800;
+    border: 0;
+}
+
+.report-breadcrumb {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.report-breadcrumb a {
+    color: #fff;
+    font-weight: 700;
+}
+
+.report-content {
+    padding-top: 8px;
+    padding-bottom: 30px;
+}
+
+.report-filter-card,
+.report-card,
+.empty-report-card {
+    border: 0;
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(16, 24, 40, 0.06);
+}
+
+.section-title {
+    font-size: 20px;
+    font-weight: 900;
+    color: #101828;
+}
+
+.section-subtitle {
+    font-size: 13px;
+    color: #667085;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+}
+
+.filter-item {
+    grid-column: span 2;
+    position: relative;
+}
+
+.filter-item.user-filter {
+    grid-column: span 4;
+}
+
+.filter-item label {
+    display: block;
+    font-size: 13px;
+    font-weight: 800;
+    color: #344054;
+    margin-bottom: 6px;
+}
+
+.filter-item .form-control {
+    border-radius: 12px;
+    min-height: 42px;
+    border-color: #d0d5dd;
+}
+
+.report-alert {
+    border: 0;
     border-radius: 14px;
+    margin-top: 16px;
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.08);
 }
 
-.report-stat-card:hover {
+.report-meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0;
+}
+
+.meta-pill {
+    background: #fff;
+    border: 1px solid #e4e7ec;
+    border-radius: 999px;
+    padding: 9px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(16, 24, 40, 0.04);
+}
+
+.meta-pill span {
+    font-size: 12px;
+    color: #667085;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.meta-pill strong {
+    font-size: 13px;
+    color: #101828;
+}
+
+.meta-pill-wide {
+    max-width: 420px;
+}
+
+.empty-report-card {
+    background: #fff;
+    padding: 46px 20px;
+    text-align: center;
+    margin-top: 16px;
+}
+
+.empty-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 14px;
+    border-radius: 22px;
+    background: #f2f4f7;
+    display: grid;
+    place-items: center;
+    color: #98a2b3;
+    font-size: 30px;
+}
+
+.empty-report-card h5 {
+    font-weight: 900;
+    color: #101828;
+}
+
+.empty-report-card p {
+    color: #667085;
+    margin: 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.stat-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 18px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    text-align: left;
+    box-shadow: 0 10px 26px rgba(16, 24, 40, 0.06);
+    border: 1px solid #eef2f6;
+    transition: 0.2s ease;
+    cursor: pointer;
+    width: 100%;
+}
+
+.stat-card:hover {
     transform: translateY(-2px);
+    border-color: #0d6efd;
 }
 
-.report-stat-icon i {
-    font-size: 22px;
+.stat-card.active {
+    border-color: #0d6efd;
+    box-shadow: 0 12px 28px rgba(13, 110, 253, 0.16);
+}
+
+.stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    background: #f8fafc;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.stat-icon i {
+    font-size: 18px;
+}
+
+.stat-body h3 {
+    margin: 0;
+    font-size: 25px;
+    font-weight: 900;
+    color: #101828;
+}
+
+.stat-body p {
+    margin: 0;
+    color: #667085;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.report-main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.report-card {
+    overflow: hidden;
+}
+
+.report-card-header {
+    background: #fff;
+    border-bottom: 1px solid #eef2f6;
+    padding: 18px 20px;
+}
+
+.report-card-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 900;
+    color: #101828;
+}
+
+.report-card-header span {
+    color: #667085;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.chart-box {
+    height: 360px;
+}
+
+.report-table thead {
+    background: #f8fafc;
+}
+
+.report-table th {
+    border-top: 0;
+    color: #344054;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.report-table td {
+    vertical-align: middle;
+}
+
+.count-pill {
+    display: inline-flex;
+    justify-content: center;
+    min-width: 38px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #e9f3ff;
+    color: #0b5ed7;
+    font-weight: 900;
+}
+
+.details-card {
+    margin-bottom: 30px;
+}
+
+.details-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+}
+
+.detail-search {
+    position: relative;
+    width: min(100%, 420px);
+}
+
+.detail-search i {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #98a2b3;
+}
+
+.detail-search input {
+    width: 100%;
+    border: 1px solid #d0d5dd;
+    border-radius: 999px;
+    padding: 10px 14px 10px 38px;
+    outline: none;
+    transition: 0.2s ease;
+}
+
+.detail-search input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
 }
 
 .chip-select-box {
-    min-height: 38px;
-    border: 1px solid #ced4da;
-    border-radius: 0.25rem;
-    padding: 4px 6px;
+    min-height: 42px;
+    border: 1px solid #d0d5dd;
+    border-radius: 12px;
+    padding: 5px 8px;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -774,8 +1165,8 @@ const columns = [
 }
 
 .chip-select-box:focus-within {
-    border-color: #80bdff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15);
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
 }
 
 .chip-item {
@@ -786,7 +1177,7 @@ const columns = [
     color: #0b5ed7;
     border: 1px solid #b6d4fe;
     border-radius: 999px;
-    padding: 3px 10px;
+    padding: 4px 10px;
     font-size: 13px;
     line-height: 1.2;
 }
@@ -796,7 +1187,7 @@ const columns = [
     background: transparent;
     color: #0b5ed7;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1;
     padding: 0;
 }
@@ -813,15 +1204,15 @@ const columns = [
 
 .chip-dropdown {
     position: absolute;
-    top: calc(100% - 2px);
-    left: 15px;
-    right: 15px;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
     background: #fff;
     border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-    z-index: 20;
-    max-height: 220px;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(16, 24, 40, 0.12);
+    z-index: 40;
+    max-height: 240px;
     overflow-y: auto;
 }
 
@@ -830,12 +1221,76 @@ const columns = [
     border: 0;
     background: #fff;
     text-align: left;
-    padding: 9px 12px;
+    padding: 10px 14px;
     cursor: pointer;
     font-size: 14px;
 }
 
 .chip-dropdown-item:hover {
-    background: #f8f9fa;
+    background: #f8fafc;
+}
+
+@media (max-width: 1200px) {
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .report-main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-item {
+        grid-column: span 3;
+    }
+
+    .filter-item.user-filter {
+        grid-column: span 6;
+    }
+}
+
+@media (max-width: 768px) {
+    .report-hero-card {
+        padding: 22px;
+        border-radius: 18px;
+    }
+
+    .report-title {
+        font-size: 28px;
+    }
+
+    .filter-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .filter-item,
+    .filter-item.user-filter {
+        grid-column: span 2;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .details-header {
+        align-items: stretch;
+    }
+
+    .detail-search {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-actions {
+        width: 100%;
+    }
+
+    .report-action-btn {
+        flex: 1;
+    }
 }
 </style>

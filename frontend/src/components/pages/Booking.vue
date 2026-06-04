@@ -1437,70 +1437,62 @@ onMounted(async () => {
 
     await loadAll();
 });
-
 const columns = [
+    { header: "No", cell: ({ row }) => row.index + 1, meta: { width: "50px" } },
     {
-        header: "No",
-        cell: ({ row }) => row.index + 1,
+        header: "Room Selection", accessorFn: (row) => {
+            const room = row.room?.name ?? `Room #${row.room_id}`;
+            const floor = row.room?.floor ? `Floor ${row.room.floor}` : "";
+            const capacity = row.room?.capacity ? `• ${row.room.capacity} Seats` : "";
+            return `${room}\n${floor} ${capacity}`;
+        }
     },
     {
-        header: "Room",
-        accessorFn: (row) => row.room?.name ?? `Room #${row.room_id}`,
+        header: "User", accessorFn: (row) => {
+            const name = row.user?.name ?? "-";
+            const dept = row.user?.department ? `\n${row.user.department}` : "";
+            return `${name}${dept}`;
+        }
     },
     {
-        header: "User",
-        accessorFn: (row) => row.user?.name ?? "-",
-    },
-    {
-        header: "Meeting Title",
-        accessorFn: (row) => row.meeting_title ?? "-",
-    },
-    {
-        header: "Chairman",
-        accessorFn: (row) => row.meeting_chairman ?? "-",
-    },
-    {
-        header: "Snack",
-        accessorFn: (row) => (row.snack_required ? "Yes" : "No"),
+        header: "Schedule",
+        cell: ({ row }) => {
+            const start = fmt(row.original.start_datetime);
+            const end = fmt(row.original.end_datetime);
+            // Split date and time on separate lines
+            const [startDate, startTime] = start.split(", ");
+            const [endDate, endTime] = end.split(", ");
+            return `${startDate}\n${startTime} - ${endTime}`;
+        },
         meta: { align: "center" },
     },
     {
-        header: "Technician",
-        accessorFn: (row) => (row.technician_required ? "Yes" : "No"),
-        meta: { align: "center" },
-    },
-    {
-        header: "Start",
-        accessorKey: "start_datetime",
+        header: "Booked At",
+        accessorKey: "created_at",
         cell: ({ getValue }) => fmt(getValue()),
         meta: { align: "center" },
     },
     {
-        header: "End",
-        accessorKey: "end_datetime",
+        header: "Updated At",
+        accessorKey: "updated_at",
         cell: ({ getValue }) => fmt(getValue()),
         meta: { align: "center" },
     },
     {
         header: "Status",
         accessorKey: "status",
-        cell: ({ getValue }) =>
-            h("span", { class: ["badge", statusBadge(getValue())] }, getValue()),
+        cell: ({ getValue }) => h("span", { class: ["badge", statusBadge(getValue())] }, getValue()),
         meta: { align: "center" },
     },
     {
         accessorKey: "action",
-        header: () => ["Actions"],
+        header: "Actions",
         cell: ({ row: { original } }) => [
-            h(
-                "button",
-                {
-                    type: "button",
-                    onClick: () => viewBooking(original.id),
-                    class: "btn btn-sm btn-outline-secondary mx-1",
-                },
-                h("i", { class: "fa fa-eye" })
-            ),
+            h("button", {
+                type: "button",
+                class: "btn btn-sm btn-outline-secondary",
+                onClick: () => viewBooking(original.id),
+            }, h("i", { class: "fa fa-eye" }))
         ],
         enableSorting: false,
         meta: { align: "center" },
@@ -1512,5 +1504,71 @@ const columns = [
 .modal .modal-body {
     max-height: calc(100vh - 210px);
     overflow-y: auto;
+}
+
+/* Table clean modern look */
+.table td,
+.table th {
+    vertical-align: middle;
+    padding: 12px 8px;
+    font-size: 0.9rem;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.badge {
+    padding: 0.35em 0.6em;
+    font-size: 0.8rem;
+    border-radius: 0.25rem;
+}
+
+.badge-warning {
+    background-color: #ffe8a1;
+    color: #856404;
+}
+
+.badge-success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.badge-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-secondary {
+    background-color: #e2e3e5;
+    color: #6c757d;
+}
+
+.badge-primary {
+    background-color: #cce5ff;
+    color: #004085;
+}
+
+.badge-dark {
+    background-color: #d6d8d9;
+    color: #1b1e21;
+}
+
+/* Multi-line cell formatting */
+.table td pre {
+    margin: 0;
+    font-family: inherit;
+    white-space: pre-line;
+}
+
+/* Action button spacing */
+.btn-outline-secondary {
+    margin-right: 4px;
 }
 </style>

@@ -117,6 +117,9 @@ class BookingController extends Controller
             'room' => $booking->room,
             'user' => $booking->user,
             'is_generated' => $generated,
+            // Add these
+            'created_at' => optional($booking->created_at)->toDateTimeString(),
+            'updated_at' => optional($booking->updated_at)->toDateTimeString(),
         ];
     }
 
@@ -405,45 +408,105 @@ class BookingController extends Controller
     }
     public function addExtraTime(Request $request, Booking $booking)
     {
-        $isOwner = $booking->user_id === $request->user()->id;
+        $user = $request->user();
 
-        if (!$isOwner) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$user || $booking->user_id !== $user->id) {
+            return response()->json([
+                'message' => 'Unauthorized',
+            ], 403);
         }
 
-        if ($this->isPastBooking($booking)) {
-            return response()->json(['message' => 'Past bookings cannot be updated'], 422);
+        /*
+     * Only approved meetings can be extended immediately.
+     * Pending bookings must be approved first.
+     */
+        if ($booking->status !== 'approved') {
+            return response()->json([
+                'message' => 'Only approved bookings can be extended',
+            ], 422);
         }
 
-        // Allow updates for approved or pending bookings
-        if (!in_array($booking->status, ['pending', 'approved'])) {
-            return response()->json(['message' => 'Booking cannot be extended'], 422);
+        /*
+     * Recommended restriction:
+     * The current recurrence implementation uses one stored duration
+     * for all generated occurrences. Extending it would affect the series.
+     */
+        if (($booking->recurrence_type ?? 'none') !== 'none') {
+            return response()->json([
+                'message' => 'Recurring bookings cannot be extended individually yet',
+            ], 422);
         }
 
-        // Use request end_datetime or default to +1 hour
-        $newEnd = $request->input('end_datetime')
-            ? Carbon::parse($request->end_datetime)
-            : $booking->end_datetime->copy()->addHour();
+        $data = $request->validate([
+            'extra_hours' => ['required', 'integer', 'min:1', 'max:4'],
+        ]);
 
-        // Check room conflict
-        if ($this->hasConflict($booking->room_id, $booking->start_datetime, $newEnd, $booking->id)) {
-            return response()->json(['message' => 'Room is already booked for this time'], 422);
+        $now = now();
+        $meetingStart = $booking->start_datetime->copy();
+        $oldEnd = $booking->end_datetime->copy();
+
+        /*
+     * Allow extra time only while the meeting is currently running.
+     */
+        if ($now->lt($meetingStart)) {
+            return response()->json([
+                'message' => 'This meeting has not started yet',
+            ], 422);
         }
 
-        // Update booking
-        $booking->update(['end_datetime' => $newEnd]);
+        if ($now->gte($oldEnd)) {
+            return response()->json([
+                'message' => 'This meeting has already ended and cannot be extended',
+            ], 422);
+        }
+
+        $extraHours = (int) $data['extra_hours'];
+        $newEnd = $oldEnd->copy()->addHours($extraHours);
+
+        /*
+     * Check only the additional time range:
+     * current end time -> requested new end time.
+     */
+        if ($this->hasConflict(
+            $booking->room_id,
+            $oldEnd->toDateTimeString(),
+            $newEnd->toDateTimeString(),
+            $booking->id
+        )) {
+            return response()->json([
+                'message' => 'Cannot extend meeting because the room is already booked during the additional time',
+            ], 422);
+        }
+
+        /*
+     * Keep approved status. No new approval is required.
+     */
+        $booking->update([
+            'end_datetime' => $newEnd,
+        ]);
+
         $booking->load(['room', 'user']);
 
-        // Notify admins
+        /*
+     * Inform admins only. This is not an approval request.
+     * Remove this block when no notification is needed.
+     */
         $this->notifyAdmins(
             $booking,
-            'Booking Time Updated',
-            "User {$booking->user->name} has updated the booking time for room {$booking->room->name}."
+            'Meeting Time Extended',
+            "User {$booking->user->name} extended the current meeting in room {$booking->room->name} by {$extraHours} hour(s). No approval is required."
         );
 
         return response()->json([
-            'message' => 'Booking time updated successfully. Admins have been notified.',
+            'message' => "Meeting extended successfully by {$extraHours} hour(s).",
             'data' => $booking,
+            'extension' => [
+                'extra_hours' => $extraHours,
+                'old_end_datetime' => $oldEnd->toDateTimeString(),
+                'new_end_datetime' => $newEnd->toDateTimeString(),
+                'status' => $booking->status,
+                'requires_approval' => false,
+            ],
         ]);
     }
     public function update(UpdateBookingRequest $request, Booking $booking)

@@ -45,6 +45,8 @@ class Booking extends Model
 
         'snack_required' => 'boolean',
         'technician_required' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
 
