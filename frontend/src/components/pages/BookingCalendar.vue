@@ -509,63 +509,95 @@ function hideDetailModal() {
         selected.value = null;
     }, 200);
 }
-
-function normalizeDt(dt) {
-    if (!dt) return null;
-
-    if (dt instanceof Date) {
-        const yyyy = dt.getFullYear();
-        const mm = String(dt.getMonth() + 1).padStart(2, "0");
-        const dd = String(dt.getDate()).padStart(2, "0");
-        const hh = String(dt.getHours()).padStart(2, "0");
-        const ii = String(dt.getMinutes()).padStart(2, "0");
-        const ss = String(dt.getSeconds()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}T${hh}:${ii}:${ss}`;
-    }
-
-    return String(dt).replace(" ", "T");
-}
-
-function toMysqlDatetime(value) {
+function parseLocalInput(value) {
     if (!value) return null;
 
     if (value instanceof Date) {
-        const yyyy = value.getFullYear();
-        const mm = String(value.getMonth() + 1).padStart(2, "0");
-        const dd = String(value.getDate()).padStart(2, "0");
-        const hh = String(value.getHours()).padStart(2, "0");
-        const ii = String(value.getMinutes()).padStart(2, "0");
-        const ss = String(value.getSeconds()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd} ${hh}:${ii}:${ss}`;
+        return Number.isNaN(value.getTime()) ? null : value;
     }
 
-    return String(value).replace("T", " ");
+    const normalized = String(value).trim().replace(" ", "T");
+    const date = new Date(normalized);
+
+    return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function fmt(dt) {
-    if (!dt) return "-";
-    return formatFullDateTime(dt);
+function parseUtcFromApi(value) {
+    if (!value) return null;
+
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    let normalized = String(value).trim().replace(" ", "T");
+
+    const hasTimezone =
+        normalized.endsWith("Z") ||
+        /[+-]\d{2}:\d{2}$/.test(normalized);
+
+    if (!hasTimezone) {
+        normalized += "Z";
+    }
+
+    const date = new Date(normalized);
+
+    return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function fmtDateOnly(dt) {
-    if (!dt) return "-";
-    return formatFullDateTime(dt).split(",")[0];
+function toMysqlDatetime(value) {
+    const date = parseLocalInput(value);
+
+    if (!date) return null;
+
+    return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
-function formatForInput(dt) {
-    if (!dt) return "";
-    const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return "";
+function normalizeDt(value) {
+    const date = parseUtcFromApi(value);
 
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const ii = String(d.getMinutes()).padStart(2, "0");
+    if (!date) return null;
 
-    return `${yyyy}-${mm}-${dd}T${hh}:${ii}`;
+    return date.toISOString();
 }
 
+function formatForInput(value) {
+    const date = parseUtcFromApi(value);
+
+    if (!date) return "";
+
+    const localDate = new Date(
+        date.getTime() - date.getTimezoneOffset() * 60000
+    );
+
+    return localDate.toISOString().slice(0, 16);
+}
+
+function fmt(value) {
+    const date = parseUtcFromApi(value);
+
+    if (!date) return "-";
+
+    return date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    });
+}
+
+function fmtDateOnly(value) {
+    const date = parseUtcFromApi(value);
+
+    if (!date) return "-";
+
+    return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    });
+}
 function parseRecurrenceDays(value) {
     if (!value) return null;
 

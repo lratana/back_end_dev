@@ -93,16 +93,16 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label>Start datetime</label>
-                                <input type="datetime-local" class="form-control" :value="startDateTimeOnlyTime"
-                                    @input="updateStartTime($event.target.value)"
+                                <input type="datetime-local" class="form-control" v-model="bookingObject.start_datetime"
+                                    :disabled="!isFieldEditable('start_datetime')"
                                     :class="{ 'is-invalid': bookingErr.start_datetime }" />
                                 <div class="invalid-feedback">{{ bookingErr.start_datetime }}</div>
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <label>End datetime</label>
-                                <input type="datetime-local" class="form-control" :value="endDateTimeOnlyTime"
-                                    @input="updateEndTime($event.target.value)"
+                                <input type="datetime-local" class="form-control" v-model="bookingObject.end_datetime"
+                                    :disabled="!isFieldEditable('end_datetime')"
                                     :class="{ 'is-invalid': bookingErr.end_datetime }" />
                                 <div class="invalid-feedback">{{ bookingErr.end_datetime }}</div>
                             </div>
@@ -472,106 +472,366 @@ const availabilityAlertClass = computed(() => {
     if (availabilityMessage.value) return "alert-warning";
     return "alert-info";
 });
-
 const filteredBookings = computed(() => {
     let list = [...(bookings.value ?? [])];
 
     if (filters.status) {
-        list = list.filter((b) => b.status === filters.status);
+        list = list.filter((booking) => booking.status === filters.status);
     }
 
     if (filters.room_id) {
-        list = list.filter((b) => String(b.room_id) === String(filters.room_id));
+        list = list.filter(
+            (booking) => String(booking.room_id) === String(filters.room_id)
+        );
     }
 
     list.sort((a, b) => {
         if (isAdmin.value) {
-            const aCreated = new Date(normalizeDt(a.created_at || a.start_datetime)).getTime();
-            const bCreated = new Date(normalizeDt(b.created_at || b.start_datetime)).getTime();
+            const aCreated =
+                parseApiUtcDatetime(a.created_at || a.start_datetime)?.getTime() ?? 0;
+
+            const bCreated =
+                parseApiUtcDatetime(b.created_at || b.start_datetime)?.getTime() ?? 0;
+
             return bCreated - aCreated;
         }
 
-        const aStart = new Date(normalizeDt(a.start_datetime)).getTime();
-        const bStart = new Date(normalizeDt(b.start_datetime)).getTime();
+        const aStart =
+            parseApiUtcDatetime(a.start_datetime)?.getTime() ?? 0;
+
+        const bStart =
+            parseApiUtcDatetime(b.start_datetime)?.getTime() ?? 0;
+
         return aStart - bStart;
     });
 
     return list;
 });
 
-function normalizeDt(dt) {
-    if (!dt) return null;
+// function normalizeDt(dt) {
+//     if (!dt) return null;
 
-    if (dt instanceof Date) {
-        const yyyy = dt.getFullYear();
-        const mm = String(dt.getMonth() + 1).padStart(2, "0");
-        const dd = String(dt.getDate()).padStart(2, "0");
-        const hh = String(dt.getHours()).padStart(2, "0");
-        const ii = String(dt.getMinutes()).padStart(2, "0");
-        const ss = String(dt.getSeconds()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}T${hh}:${ii}:${ss}`;
+//     if (dt instanceof Date) {
+//         const yyyy = dt.getFullYear();
+//         const mm = String(dt.getMonth() + 1).padStart(2, "0");
+//         const dd = String(dt.getDate()).padStart(2, "0");
+//         const hh = String(dt.getHours()).padStart(2, "0");
+//         const ii = String(dt.getMinutes()).padStart(2, "0");
+//         const ss = String(dt.getSeconds()).padStart(2, "0");
+//         return `${yyyy}-${mm}-${dd}T${hh}:${ii}:${ss}`;
+//     }
+
+//     return String(dt).replace(" ", "T");
+// }
+
+// function fmt(dt) {
+//     if (!dt) return "-";
+//     return formatFullDateTime(dt);
+// }
+
+// function fmtDateOnly(dt) {
+//     if (!dt) return "-";
+//     return formatFullDateTime(dt).split(",")[0];
+// }
+
+// function toLocalInput(dt) {
+//     if (!dt) return "";
+
+//     // Expecting dt in "YYYY-MM-DD HH:MM:SS" or ISO format from backend
+//     const dateTimeStr = String(dt).replace(" ", "T").slice(0, 16);
+//     // slice(0,16) ensures "YYYY-MM-DDTHH:MM" format required by datetime-local
+//     return dateTimeStr;
+// }
+
+// const startDateTimeOnlyTime = computed(() => {
+//     if (!bookingObject.start_datetime) return "";
+//     const [date, time] = bookingObject.start_datetime.split("T");
+//     return `${date}T${time}`; // keeps original date
+// });
+
+// const endDateTimeOnlyTime = computed(() => {
+//     if (!bookingObject.end_datetime) return "";
+//     const [date, time] = bookingObject.end_datetime.split("T");
+//     return `${date}T${time}`; // keeps original date
+// });
+// // When user changes time, keep the original date and only update the time part
+// function updateStartTime(value) {
+//     if (!bookingObject.start_datetime) return;
+//     const [date] = bookingObject.start_datetime.split("T");
+//     bookingObject.start_datetime = `${date}T${value.split("T")[1]}`;
+// }
+// // When user changes time, keep the original date and only update the time part
+// function updateEndTime(value) {
+//     if (!bookingObject.end_datetime) return;
+//     const [date] = bookingObject.end_datetime.split("T");
+//     bookingObject.end_datetime = `${date}T${value.split("T")[1]}`;
+// }
+
+// function toMysqlDatetime(value) {
+//     if (!value) return null;
+
+//     if (value instanceof Date) {
+//         const yyyy = value.getFullYear();
+//         const mm = String(value.getMonth() + 1).padStart(2, "0");
+//         const dd = String(value.getDate()).padStart(2, "0");
+//         const hh = String(value.getHours()).padStart(2, "0");
+//         const ii = String(value.getMinutes()).padStart(2, "0");
+//         const ss = String(value.getSeconds()).padStart(2, "0");
+//         return `${yyyy}-${mm}-${dd} ${hh}:${ii}:${ss}`;
+//     }
+
+//     return String(value).replace("T", " ");
+// }
+
+/*
+|--------------------------------------------------------------------------
+| Booking timezone configuration
+|--------------------------------------------------------------------------
+| Cambodia uses UTC+07:00.
+| All booking times displayed to users are shown in Cambodia time.
+|--------------------------------------------------------------------------
+*/
+const BOOKING_TIME_ZONE = "Asia/Phnom_Penh";
+
+/*
+|--------------------------------------------------------------------------
+| Parse datetime received from API
+|--------------------------------------------------------------------------
+| Your API is expected to return booking datetimes as UTC, for example:
+|   2026-06-04T07:55:00.000Z
+|
+| If the API returns a MySQL datetime string without "Z", for example:
+|   2026-06-04 07:55:00
+| this function treats it as UTC because your booking API stores/returns UTC.
+|--------------------------------------------------------------------------
+*/
+function parseApiUtcDatetime(value) {
+    if (!value) return null;
+
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
     }
 
-    return String(dt).replace(" ", "T");
+    let text = String(value).trim().replace(" ", "T");
+
+    const alreadyHasTimezone =
+        /Z$/i.test(text) ||
+        /[+-]\d{2}:\d{2}$/.test(text);
+
+    if (!alreadyHasTimezone) {
+        text += "Z";
+    }
+
+    const date = new Date(text);
+
+    return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function fmt(dt) {
-    if (!dt) return "-";
-    return formatFullDateTime(dt);
+/*
+|--------------------------------------------------------------------------
+| Parse datetime-local form value as Cambodia time
+|--------------------------------------------------------------------------
+| HTML datetime-local has no timezone.
+| Example:
+|   2026-06-04T14:55
+| means:
+|   Jun 4, 2026 2:55 PM Cambodia time
+|--------------------------------------------------------------------------
+*/
+function parseCambodiaFormDatetime(value) {
+    if (!value) return null;
+
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    let text = String(value).trim().replace(" ", "T");
+
+    if (text.length === 16) {
+        text += ":00";
+    }
+
+    const date = new Date(`${text.slice(0, 19)}+07:00`);
+
+    return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function fmtDateOnly(dt) {
-    if (!dt) return "-";
-    return formatFullDateTime(dt).split(",")[0];
+/*
+|--------------------------------------------------------------------------
+| Extract Cambodia local date/time components
+|--------------------------------------------------------------------------
+*/
+function getCambodiaParts(date) {
+    if (!date || Number.isNaN(date.getTime())) return null;
+
+    const parts = new Intl.DateTimeFormat("en-GB", {
+        timeZone: BOOKING_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+    }).formatToParts(date);
+
+    const getPart = (type) => {
+        return parts.find((part) => part.type === type)?.value ?? "";
+    };
+
+    return {
+        year: getPart("year"),
+        month: getPart("month"),
+        day: getPart("day"),
+        hour: getPart("hour"),
+        minute: getPart("minute"),
+        second: getPart("second"),
+    };
 }
 
-function toLocalInput(dt) {
-    if (!dt) return "";
+/*
+|--------------------------------------------------------------------------
+| Display API UTC datetime as Cambodia local datetime
+|--------------------------------------------------------------------------
+| Example:
+| API value:
+|   2026-06-04T07:55:00.000Z
+|
+| Display value:
+|   Jun 4, 2026, 2:55 PM
+|--------------------------------------------------------------------------
+*/
+function fmt(value) {
+    const date = parseApiUtcDatetime(value);
 
-    // Expecting dt in "YYYY-MM-DD HH:MM:SS" or ISO format from backend
-    const dateTimeStr = String(dt).replace(" ", "T").slice(0, 16);
-    // slice(0,16) ensures "YYYY-MM-DDTHH:MM" format required by datetime-local
-    return dateTimeStr;
+    if (!date) return "-";
+
+    return new Intl.DateTimeFormat("en-US", {
+        timeZone: BOOKING_TIME_ZONE,
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    }).format(date);
 }
 
-const startDateTimeOnlyTime = computed(() => {
-    if (!bookingObject.start_datetime) return "";
-    const [date, time] = bookingObject.start_datetime.split("T");
-    return `${date}T${time}`; // keeps original date
-});
+/*
+|--------------------------------------------------------------------------
+| Display date-only values without timezone shifting
+|--------------------------------------------------------------------------
+| Use this for recurrence_until because it is only a calendar date.
+|--------------------------------------------------------------------------
+*/
+function fmtDateOnly(value) {
+    if (!value) return "-";
 
-const endDateTimeOnlyTime = computed(() => {
-    if (!bookingObject.end_datetime) return "";
-    const [date, time] = bookingObject.end_datetime.split("T");
-    return `${date}T${time}`; // keeps original date
-});
-// When user changes time, keep the original date and only update the time part
-function updateStartTime(value) {
-    if (!bookingObject.start_datetime) return;
-    const [date] = bookingObject.start_datetime.split("T");
-    bookingObject.start_datetime = `${date}T${value.split("T")[1]}`;
-}
-// When user changes time, keep the original date and only update the time part
-function updateEndTime(value) {
-    if (!bookingObject.end_datetime) return;
-    const [date] = bookingObject.end_datetime.split("T");
-    bookingObject.end_datetime = `${date}T${value.split("T")[1]}`;
+    const dateOnly = String(value).slice(0, 10);
+    const date = new Date(`${dateOnly}T00:00:00Z`);
+
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return new Intl.DateTimeFormat("en-US", {
+        timeZone: "UTC",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    }).format(date);
 }
 
+/*
+|--------------------------------------------------------------------------
+| Convert current Date or API UTC datetime to datetime-local input value
+|--------------------------------------------------------------------------
+| Used by:
+| - openCreate(): default booking date/time
+| - fillFormFromBooking(): edit existing booking
+|
+| Example API value:
+|   2026-06-04T07:55:00.000Z
+|
+| Input display:
+|   2026-06-04T14:55
+|--------------------------------------------------------------------------
+*/
+function toLocalInput(value) {
+    if (!value) return "";
+
+    const date = value instanceof Date
+        ? value
+        : parseApiUtcDatetime(value);
+
+    if (!date || Number.isNaN(date.getTime())) return "";
+
+    const parts = getCambodiaParts(date);
+
+    if (!parts) return "";
+
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Send datetime-local value to current backend
+|--------------------------------------------------------------------------
+| Keep Cambodia local wall-clock time here because your current backend
+| already appears to convert the submitted value into UTC.
+|
+| Example input:
+|   2026-06-04T14:55
+|
+| Request payload:
+|   2026-06-04 14:55:00
+|--------------------------------------------------------------------------
+*/
 function toMysqlDatetime(value) {
     if (!value) return null;
 
     if (value instanceof Date) {
-        const yyyy = value.getFullYear();
-        const mm = String(value.getMonth() + 1).padStart(2, "0");
-        const dd = String(value.getDate()).padStart(2, "0");
-        const hh = String(value.getHours()).padStart(2, "0");
-        const ii = String(value.getMinutes()).padStart(2, "0");
-        const ss = String(value.getSeconds()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd} ${hh}:${ii}:${ss}`;
+        const localInput = toLocalInput(value);
+
+        return localInput ? `${localInput.replace("T", " ")}:00` : null;
     }
 
-    return String(value).replace("T", " ");
+    let text = String(value).trim().replace("T", " ");
+
+    if (text.length === 16) {
+        text += ":00";
+    }
+
+    return text.slice(0, 19);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Format schedule table values
+|--------------------------------------------------------------------------
+*/
+function formatScheduleDate(value) {
+    const date = parseApiUtcDatetime(value);
+
+    if (!date) return "-";
+
+    return new Intl.DateTimeFormat("en-US", {
+        timeZone: BOOKING_TIME_ZONE,
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    }).format(date);
+}
+
+function formatScheduleTime(value) {
+    const date = parseApiUtcDatetime(value);
+
+    if (!date) return "-";
+
+    return new Intl.DateTimeFormat("en-US", {
+        timeZone: BOOKING_TIME_ZONE,
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    }).format(date);
 }
 
 function normalizeRecurrenceUntil(dt) {
@@ -587,14 +847,25 @@ function parseRecurrenceDays(value) {
         .map((x) => x.trim().toLowerCase())
         .filter(Boolean);
 }
-
 function isPastBooking(booking) {
     if (!booking?.end_datetime) return false;
-    const end = new Date(normalizeDt(booking.end_datetime));
-    if (Number.isNaN(end.getTime())) return false;
+
+    const end = parseApiUtcDatetime(booking.end_datetime);
+
+    if (!end) return false;
+
     return end.getTime() < Date.now();
 }
 
+function isPastBookingForm() {
+    if (!bookingObject.end_datetime) return false;
+
+    const end = parseCambodiaFormDatetime(bookingObject.end_datetime);
+
+    if (!end) return false;
+
+    return end.getTime() < Date.now();
+}
 function formatRecurrenceDays(value) {
     if (!value) return "-";
     if (Array.isArray(value)) return value.join(", ");
@@ -740,17 +1011,17 @@ const isFieldEditable = (fieldName) => {
     }
     return true; // All fields editable if not approved
 };
-
 const canEditBookingForm = computed(() => {
-    if (!bookingObject.id) return true;
+    if (!bookingObject.id) {
+        return true;
+    }
 
     if (isApprovedBooking.value) {
-        // Allow saving only Start and End datetime
-        return !isPastBooking(bookingObject);
+        return !isPastBookingForm();
     }
-    return (bookingObject.status === "pending") && !isPastBooking(bookingObject);
-});
 
+    return bookingObject.status === "pending" && !isPastBookingForm();
+});
 
 function resetData() {
     Object.assign(bookingObject, { ...defaultBookingObject });
@@ -903,6 +1174,12 @@ async function viewBooking(id) {
         const response = await apiGetBooking(id);
         const booking = response.data?.data ?? response.data?.booking ?? response.data;
 
+        console.log("========== API BOOKING DATETIME ==========");
+        console.log("Raw API start:", booking.start_datetime);
+        console.log("Raw API end:", booking.end_datetime);
+        console.log("Cambodia display start:", fmt(booking.start_datetime));
+        console.log("Cambodia display end:", fmt(booking.end_datetime));
+
         selectedBooking.value = booking;
         showDetailModal();
         CloseModal();
@@ -959,7 +1236,6 @@ async function editFromDetail() {
         showBookingModal();
     }, 300);
 }
-
 function validateBookingForm() {
     formError.value = "";
     Object.assign(bookingErr, { ...defaultBookingErr });
@@ -968,25 +1244,37 @@ function validateBookingForm() {
         bookingErr.start_datetime = "Start datetime is required";
         return false;
     }
+
     if (!bookingObject.end_datetime) {
         bookingErr.end_datetime = "End datetime is required";
         return false;
     }
+
     if (!bookingObject.room_id) {
         bookingErr.room_id = "Room is required";
         return false;
     }
 
-    const start = new Date(normalizeDt(bookingObject.start_datetime));
-    const end = new Date(normalizeDt(bookingObject.end_datetime));
-    if (end <= start) {
+    const start = parseCambodiaFormDatetime(bookingObject.start_datetime);
+    const end = parseCambodiaFormDatetime(bookingObject.end_datetime);
+
+    if (!start) {
+        bookingErr.start_datetime = "Invalid start datetime";
+        return false;
+    }
+
+    if (!end) {
+        bookingErr.end_datetime = "Invalid end datetime";
+        return false;
+    }
+
+    if (end.getTime() <= start.getTime()) {
         bookingErr.end_datetime = "End datetime must be after start";
         return false;
     }
 
     return true;
 }
-
 async function loadAvailableRooms(silent = false, preferredRoomId = null) {
     if (!silent) {
         formError.value = "";
@@ -1003,18 +1291,17 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
         }
         return;
     }
+    const start = parseCambodiaFormDatetime(bookingObject.start_datetime);
+    const end = parseCambodiaFormDatetime(bookingObject.end_datetime);
 
-    const start = new Date(normalizeDt(bookingObject.start_datetime));
-    const end = new Date(normalizeDt(bookingObject.end_datetime));
-
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (!start || !end) {
         if (!silent) {
             formError.value = "Invalid start or end datetime.";
         }
         return;
     }
 
-    if (end <= start) {
+    if (end.getTime() <= start.getTime()) {
         if (!silent) {
             formError.value = "End datetime must be after start datetime.";
         }
@@ -1160,10 +1447,20 @@ async function saveBooking() {
             meeting_title: bookingObject.meeting_title || null,
             meeting_chairman: bookingObject.meeting_chairman || null,
             snack_required: bookingObject.snack_required,
-            snack_note: bookingObject.snack_required ? bookingObject.snack_note : null,
+            snack_note: bookingObject.snack_required
+                ? bookingObject.snack_note
+                : null,
             technician_required: bookingObject.technician_required,
-            technician_note: bookingObject.technician_required ? bookingObject.technician_note : null,
+            technician_note: bookingObject.technician_required
+                ? bookingObject.technician_note
+                : null,
         };
+
+        console.log("========== SAVE BOOKING DATETIME ==========");
+        console.log("Form start Cambodia:", bookingObject.start_datetime);
+        console.log("Form end Cambodia:", bookingObject.end_datetime);
+        console.log("Payload start:", payload.start_datetime);
+        console.log("Payload end:", payload.end_datetime);
 
         const response = bookingObject.id
             ? await apiUpdateBooking(bookingObject.id, payload)
@@ -1457,12 +1754,10 @@ const columns = [
     {
         header: "Schedule",
         cell: ({ row }) => {
-            const start = fmt(row.original.start_datetime);
-            const end = fmt(row.original.end_datetime);
-            // Split date and time on separate lines
-            const [startDate, startTime] = start.split(", ");
-            const [endDate, endTime] = end.split(", ");
-            return `${startDate}\n${startTime} - ${endTime}`;
+            const start = row.original.start_datetime;
+            const end = row.original.end_datetime;
+
+            return `${formatScheduleDate(start)}\n${formatScheduleTime(start)} - ${formatScheduleTime(end)}`;
         },
         meta: { align: "center" },
     },
