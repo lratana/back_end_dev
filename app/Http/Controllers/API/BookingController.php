@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Services\TelegramService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Requests\Booking\UpdateBookingRequest;
@@ -69,24 +70,25 @@ class BookingController extends Controller
             ->all();
     }
 
-    private function notifyAdmins(Booking $booking, string $title, string $message): void
-    {
-        $admins = User::query()
-            ->whereIn('level', ['admin', 'super_admin'])
-            ->where('id', '!=', $booking->user_id)
-            ->get();
+    // // Notification helpers
+    // private function notifyAdmins(Booking $booking, string $title, string $message): void
+    // {
+    //     $admins = User::query()
+    //         ->whereIn('level', ['admin', 'super_admin'])
+    //         ->where('id', '!=', $booking->user_id)
+    //         ->get();
 
-        foreach ($admins as $admin) {
-            $admin->notify(new BookingStatusNotification($booking, $title, $message));
-        }
-    }
+    //     foreach ($admins as $admin) {
+    //         $admin->notify(new BookingStatusNotification($booking, $title, $message));
+    //     }
+    // }
 
-    private function notifyBookingOwner(Booking $booking, string $title, string $message): void
-    {
-        if ($booking->user) {
-            $booking->user->notify(new BookingStatusNotification($booking, $title, $message));
-        }
-    }
+    // private function notifyBookingOwner(Booking $booking, string $title, string $message): void
+    // {
+    //     if ($booking->user) {
+    //         $booking->user->notify(new BookingStatusNotification($booking, $title, $message));
+    //     }
+    // }
 
     private function makeOccurrencePayload(
         Booking $booking,
@@ -884,6 +886,29 @@ class BookingController extends Controller
             'cancel_requested' => $cancelRequested,
             'completed' => $completed,
         ]);
+    }
+    // Notification helpers xxxxxxx
+    private function notifyAdmins(Booking $booking, string $title, string $message): void
+    {
+        $admins = User::query()
+            ->whereIn('level', ['admin', 'super_admin'])
+            ->where('id', '!=', $booking->user_id)
+            ->get();
+
+        foreach ($admins as $admin) {
+            $admin->notify(new BookingStatusNotification($booking, $title, $message));
+        }
+
+        app(TelegramService::class)->sendBookingAlert($booking, $title, $message);
+    }
+
+    private function notifyBookingOwner(Booking $booking, string $title, string $message): void
+    {
+        if ($booking->user) {
+            $booking->user->notify(new BookingStatusNotification($booking, $title, $message));
+        }
+
+        app(TelegramService::class)->sendBookingAlert($booking, $title, $message);
     }
 
     public function calendar(Request $request)
