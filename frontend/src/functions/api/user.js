@@ -5,7 +5,7 @@ export function apiGetUsers(params = {}) {
 export function apiGetDetailUsers(params = {}) {
     return axios.get(window.API_URL + `/manage/users`, { params });
 }
-
+// export function apiGetDetailUser
 export function apiReadDetailUser(id) {
     return axios.get(window.API_URL + `/manage/users/read/${id}`);
 }
