@@ -22,8 +22,8 @@
             <div class="container-fluid">
                 <div class="card">
                     <div class="card-header">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center" style="gap:10px;">
-                            <div class="d-flex flex-wrap align-items-end" style="gap:10px;">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center" style="gap: 10px">
+                            <div class="d-flex flex-wrap align-items-end" style="gap: 10px">
                                 <div>
                                     <label class="mb-1 small text-muted">Status</label>
                                     <select class="form-control form-control-sm" v-model="filters.status">
@@ -37,7 +37,7 @@
                                     </select>
                                 </div>
 
-                                <div style="min-width:260px;">
+                                <div style="min-width: 260px">
                                     <label class="mb-1 small text-muted">Room</label>
                                     <select class="form-control form-control-sm" v-model="filters.room_id">
                                         <option value="">All rooms</option>
@@ -107,13 +107,14 @@
                                 <div class="invalid-feedback">{{ bookingErr.end_datetime }}</div>
                             </div>
 
-                            <div class="col-12 mb-3 d-flex align-items-center" style="gap:10px;">
+                            <div class="col-12 mb-3 d-flex align-items-center" style="gap: 10px">
                                 <button type="button" class="btn btn-outline-info btn-sm" @click="loadAvailableRooms">
                                     <i class="fas fa-search mr-1" :class="{ 'fa-spin': checkingAvailability }"></i>
                                     {{ checkingAvailability ? "Checking..." : "Refresh Available Rooms" }}
                                 </button>
                                 <small class="text-muted">After selecting the date/time, the system will automatically
-                                    search for available rooms.</small>
+                                    search for
+                                    available rooms.</small>
                             </div>
 
                             <div class="col-md-6 form-group">
@@ -199,8 +200,8 @@
                             <div class="col-md-8 form-group">
                                 <label>Snack Note</label>
                                 <!-- Snack Note -->
-                                <input type="text" class="form-control" v-model="bookingObject.snack_note"
-                                    :disabled="!isFieldEditable('snack_note') || !bookingObject.snack_required" />
+                                <input type="text" class="form-control" v-model="bookingObject.snack_note" :disabled="!isFieldEditable('snack_note') || !bookingObject.snack_required
+                                    " />
                             </div>
 
                             <div class="col-md-4 form-group">
@@ -216,13 +217,15 @@
                                 <label>Technician Note</label>
                                 <!-- Technician Note -->
                                 <input type="text" class="form-control" v-model="bookingObject.technician_note"
-                                    placeholder="Technician detail"
-                                    :disabled="!isFieldEditable('technician_note') || !bookingObject.technician_required" />
+                                    placeholder="Technician detail" :disabled="!isFieldEditable('technician_note') ||
+                                        !bookingObject.technician_required
+                                        " />
                             </div>
 
                             <div class="col-12">
                                 <small class="text-muted">
-                                    * If conflict => backend returns 422 message: "Room is already booked for this time"
+                                    * If conflict => backend returns 422 message: "Room is already booked
+                                    for this time"
                                 </small>
                             </div>
                         </div>
@@ -258,12 +261,14 @@
                     <table v-if="selectedBooking" class="table table-bordered table-sm">
                         <tbody>
                             <tr>
-                                <th style="width: 180px;">ID</th>
+                                <th style="width: 180px">ID</th>
                                 <td>{{ selectedBooking.id }}</td>
                             </tr>
                             <tr>
                                 <th>Room</th>
-                                <td>{{ selectedBooking.room?.name ?? `Room #${selectedBooking.room_id}` }}</td>
+                                <td>
+                                    {{ selectedBooking.room?.name ?? `Room #${selectedBooking.room_id}` }}
+                                </td>
                             </tr>
                             <tr>
                                 <th>User</th>
@@ -349,7 +354,7 @@
                         Close
                     </button> -->
 
-                    <div class="d-flex flex-wrap" style="gap:8px;">
+                    <div class="d-flex flex-wrap" style="gap: 8px">
                         <button v-if="selectedBooking && canOpenEdit(selectedBooking)" type="button"
                             class="btn btn-primary" @click="editFromDetail">
                             <i class="fa fa-pen mr-1"></i> Edit
@@ -403,7 +408,18 @@ import { useRoute, useRouter } from "vue-router";
 import Swal from "sweetalert2";
 import CustomTable from "../includes/tables/CustomTable.vue";
 import { CloseModal, LoadingModal, MessageModal } from "@func/swal";
-import { formatFullDateTime } from "@func/datetime";
+import {
+    parseBookingLocalDatetime,
+    parseCambodiaFormDatetime,
+    formatBookingDateTime,
+    formatBookingDate,
+    formatBookingTime,
+    formatDateOnly,
+    toDatetimeLocalInput,
+    toMysqlDatetime,
+    isPastBookingEnd,
+    isPastCambodiaFormEnd,
+} from "@func/bookingTime";
 import {
     apiGetBookings,
     apiCreateBooking,
@@ -418,6 +434,7 @@ import {
     apiGetAvailableRooms,
 } from "@func/api/booking";
 import { apiGetRooms } from "@func/api/room";
+import { formatSystemDateTime } from "@/functions/bookingTime";
 
 if (window.$?.fn?.modal?.Constructor?.prototype) {
     window.$.fn.modal.Constructor.prototype._enforceFocus = function () { };
@@ -480,9 +497,7 @@ const filteredBookings = computed(() => {
     }
 
     if (filters.room_id) {
-        list = list.filter(
-            (booking) => String(booking.room_id) === String(filters.room_id)
-        );
+        list = list.filter((booking) => String(booking.room_id) === String(filters.room_id));
     }
 
     list.sort((a, b) => {
@@ -496,11 +511,9 @@ const filteredBookings = computed(() => {
             return bCreated - aCreated;
         }
 
-        const aStart =
-            parseApiUtcDatetime(a.start_datetime)?.getTime() ?? 0;
+        const aStart = parseApiUtcDatetime(a.start_datetime)?.getTime() ?? 0;
 
-        const bStart =
-            parseApiUtcDatetime(b.start_datetime)?.getTime() ?? 0;
+        const bStart = parseApiUtcDatetime(b.start_datetime)?.getTime() ?? 0;
 
         return aStart - bStart;
     });
@@ -582,289 +595,44 @@ const filteredBookings = computed(() => {
 
 //     return String(value).replace("T", " ");
 // }
-
-/*
-|--------------------------------------------------------------------------
-| Booking timezone configuration
-|--------------------------------------------------------------------------
-| Cambodia uses UTC+07:00.
-| All booking times displayed to users are shown in Cambodia time.
-|--------------------------------------------------------------------------
-*/
-const BOOKING_TIME_ZONE = "Asia/Phnom_Penh";
-
-/*
-|--------------------------------------------------------------------------
-| Parse datetime received from API
-|--------------------------------------------------------------------------
-| Your API is expected to return booking datetimes as UTC, for example:
-|   2026-06-04T07:55:00.000Z
-|
-| If the API returns a MySQL datetime string without "Z", for example:
-|   2026-06-04 07:55:00
-| this function treats it as UTC because your booking API stores/returns UTC.
-|--------------------------------------------------------------------------
-*/
 function parseApiUtcDatetime(value) {
-    if (!value) return null;
-
-    if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value;
-    }
-
-    let text = String(value).trim().replace(" ", "T");
-
-    const alreadyHasTimezone =
-        /Z$/i.test(text) ||
-        /[+-]\d{2}:\d{2}$/.test(text);
-
-    if (!alreadyHasTimezone) {
-        text += "Z";
-    }
-
-    const date = new Date(text);
-
-    return Number.isNaN(date.getTime()) ? null : date;
+    return parseBookingLocalDatetime(value);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Parse datetime-local form value as Cambodia time
-|--------------------------------------------------------------------------
-| HTML datetime-local has no timezone.
-| Example:
-|   2026-06-04T14:55
-| means:
-|   Jun 4, 2026 2:55 PM Cambodia time
-|--------------------------------------------------------------------------
-*/
-function parseCambodiaFormDatetime(value) {
-    if (!value) return null;
-
-    if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value;
-    }
-
-    let text = String(value).trim().replace(" ", "T");
-
-    if (text.length === 16) {
-        text += ":00";
-    }
-
-    const date = new Date(`${text.slice(0, 19)}+07:00`);
-
-    return Number.isNaN(date.getTime()) ? null : date;
+function parseLocalInput(value) {
+    return parseCambodiaFormDatetime(value);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Extract Cambodia local date/time components
-|--------------------------------------------------------------------------
-*/
-function getCambodiaParts(date) {
-    if (!date || Number.isNaN(date.getTime())) return null;
-
-    const parts = new Intl.DateTimeFormat("en-GB", {
-        timeZone: BOOKING_TIME_ZONE,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h23",
-    }).formatToParts(date);
-
-    const getPart = (type) => {
-        return parts.find((part) => part.type === type)?.value ?? "";
-    };
-
-    return {
-        year: getPart("year"),
-        month: getPart("month"),
-        day: getPart("day"),
-        hour: getPart("hour"),
-        minute: getPart("minute"),
-        second: getPart("second"),
-    };
-}
-
-/*
-|--------------------------------------------------------------------------
-| Display API UTC datetime as Cambodia local datetime
-|--------------------------------------------------------------------------
-| Example:
-| API value:
-|   2026-06-04T07:55:00.000Z
-|
-| Display value:
-|   Jun 4, 2026, 2:55 PM
-|--------------------------------------------------------------------------
-*/
 function fmt(value) {
-    const date = parseApiUtcDatetime(value);
-
-    if (!date) return "-";
-
-    return new Intl.DateTimeFormat("en-US", {
-        timeZone: BOOKING_TIME_ZONE,
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-    }).format(date);
+    return formatSystemDateTime(value);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Display date-only values without timezone shifting
-|--------------------------------------------------------------------------
-| Use this for recurrence_until because it is only a calendar date.
-|--------------------------------------------------------------------------
-*/
 function fmtDateOnly(value) {
-    if (!value) return "-";
-
-    const dateOnly = String(value).slice(0, 10);
-    const date = new Date(`${dateOnly}T00:00:00Z`);
-
-    if (Number.isNaN(date.getTime())) return "-";
-
-    return new Intl.DateTimeFormat("en-US", {
-        timeZone: "UTC",
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-    }).format(date);
+    return formatDateOnly(value);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Convert current Date or API UTC datetime to datetime-local input value
-|--------------------------------------------------------------------------
-| Used by:
-| - openCreate(): default booking date/time
-| - fillFormFromBooking(): edit existing booking
-|
-| Example API value:
-|   2026-06-04T07:55:00.000Z
-|
-| Input display:
-|   2026-06-04T14:55
-|--------------------------------------------------------------------------
-*/
 function toLocalInput(value) {
-    if (!value) return "";
-
-    const date = value instanceof Date
-        ? value
-        : parseApiUtcDatetime(value);
-
-    if (!date || Number.isNaN(date.getTime())) return "";
-
-    const parts = getCambodiaParts(date);
-
-    if (!parts) return "";
-
-    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+    return toDatetimeLocalInput(value);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Send datetime-local value to current backend
-|--------------------------------------------------------------------------
-| Keep Cambodia local wall-clock time here because your current backend
-| already appears to convert the submitted value into UTC.
-|
-| Example input:
-|   2026-06-04T14:55
-|
-| Request payload:
-|   2026-06-04 14:55:00
-|--------------------------------------------------------------------------
-*/
-function toMysqlDatetime(value) {
-    if (!value) return null;
-
-    if (value instanceof Date) {
-        const localInput = toLocalInput(value);
-
-        return localInput ? `${localInput.replace("T", " ")}:00` : null;
-    }
-
-    let text = String(value).trim().replace("T", " ");
-
-    if (text.length === 16) {
-        text += ":00";
-    }
-
-    return text.slice(0, 19);
+function toMysqlDatetimeWrapper(value) {
+    return toMysqlDatetime(value);
 }
 
-/*
-|--------------------------------------------------------------------------
-| Format schedule table values
-|--------------------------------------------------------------------------
-*/
 function formatScheduleDate(value) {
-    const date = parseApiUtcDatetime(value);
-
-    if (!date) return "-";
-
-    return new Intl.DateTimeFormat("en-US", {
-        timeZone: BOOKING_TIME_ZONE,
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-    }).format(date);
+    return formatBookingDate(value);
 }
 
 function formatScheduleTime(value) {
-    const date = parseApiUtcDatetime(value);
-
-    if (!date) return "-";
-
-    return new Intl.DateTimeFormat("en-US", {
-        timeZone: BOOKING_TIME_ZONE,
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-    }).format(date);
+    return formatBookingTime(value);
 }
 
-function normalizeRecurrenceUntil(dt) {
-    if (!dt) return "";
-    return String(dt).slice(0, 10);
-}
-
-function parseRecurrenceDays(value) {
-    if (!value) return null;
-
-    return String(value)
-        .split(",")
-        .map((x) => x.trim().toLowerCase())
-        .filter(Boolean);
-}
 function isPastBooking(booking) {
-    if (!booking?.end_datetime) return false;
-
-    const end = parseApiUtcDatetime(booking.end_datetime);
-
-    if (!end) return false;
-
-    return end.getTime() < Date.now();
+    return isPastBookingEnd(booking.end_datetime);
 }
 
 function isPastBookingForm() {
-    if (!bookingObject.end_datetime) return false;
-
-    const end = parseCambodiaFormDatetime(bookingObject.end_datetime);
-
-    if (!end) return false;
-
-    return end.getTime() < Date.now();
+    return isPastCambodiaFormEnd(bookingObject.end_datetime);
 }
 function formatRecurrenceDays(value) {
     if (!value) return "-";
@@ -872,6 +640,10 @@ function formatRecurrenceDays(value) {
     return String(value);
 }
 
+function normalizeRecurrenceUntil(dt) {
+    if (!dt) return "";
+    return String(dt).slice(0, 10);
+}
 function statusBadge(status) {
     switch (status) {
         case "pending":
@@ -1206,7 +978,7 @@ async function fillFormFromBooking(booking) {
         recurrence_type: booking.recurrence_type ?? "none",
         recurrence_days: Array.isArray(booking.recurrence_days)
             ? booking.recurrence_days.join(",")
-            : (booking.recurrence_days ?? ""),
+            : booking.recurrence_days ?? "",
         recurrence_period: booking.recurrence_period ?? "",
         recurrence_until: normalizeRecurrenceUntil(booking.recurrence_until),
         meeting_title: booking.meeting_title ?? "",
@@ -1291,13 +1063,11 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
         }
         return;
     }
-    const start = parseCambodiaFormDatetime(bookingObject.start_datetime);
-    const end = parseCambodiaFormDatetime(bookingObject.end_datetime);
+    const start = parseLocalInput(bookingObject.start_datetime);
+    const end = parseLocalInput(bookingObject.end_datetime);
 
-    if (!start || !end) {
-        if (!silent) {
-            formError.value = "Invalid start or end datetime.";
-        }
+    if (!start || !end || end.getTime() <= start.getTime()) {
+        formError.value = "Invalid datetime range";
         return;
     }
 
@@ -1325,7 +1095,9 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
             availabilityMessage.value = `There are ${availableRooms.value.length} available rooms. Please select a room.`;
 
             if (preferredId) {
-                const matched = availableRooms.value.find((r) => Number(r.id) === Number(preferredId));
+                const matched = availableRooms.value.find(
+                    (r) => Number(r.id) === Number(preferredId)
+                );
                 if (matched) {
                     bookingObject.room_id = String(matched.id);
                 } else if (currentSelectedRoomId) {
@@ -1341,9 +1113,7 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
 
         if (!silent) {
             formError.value =
-                e?.response?.data?.message ||
-                e?.message ||
-                "Failed to check available rooms.";
+                e?.response?.data?.message || e?.message || "Failed to check available rooms.";
         }
     } finally {
         checkingAvailability.value = false;
@@ -1442,14 +1212,12 @@ async function saveBooking() {
     try {
         const payload = {
             room_id: Number(bookingObject.room_id),
-            start_datetime: toMysqlDatetime(bookingObject.start_datetime),
-            end_datetime: toMysqlDatetime(bookingObject.end_datetime),
+            tart_datetime: toMysqlDatetimeWrapper(bookingForm.start_datetime),
+            end_datetime: toMysqlDatetimeWrapper(bookingForm.end_datetime),
             meeting_title: bookingObject.meeting_title || null,
             meeting_chairman: bookingObject.meeting_chairman || null,
             snack_required: bookingObject.snack_required,
-            snack_note: bookingObject.snack_required
-                ? bookingObject.snack_note
-                : null,
+            snack_note: bookingObject.snack_required ? bookingObject.snack_note : null,
             technician_required: bookingObject.technician_required,
             technician_note: bookingObject.technician_required
                 ? bookingObject.technician_note
@@ -1468,7 +1236,13 @@ async function saveBooking() {
 
         onBookingCreate(response.data?.data ?? response.data);
         hideBookingModal();
-        Swal.fire({ icon: "success", title: "Booking saved successfully", toast: true, position: "top-end", timer: 2000 });
+        Swal.fire({
+            icon: "success",
+            title: "Booking saved successfully",
+            toast: true,
+            position: "top-end",
+            timer: 2000,
+        });
     } catch (e) {
         formError.value = e?.response?.data?.message || "Failed to save booking";
     } finally {
@@ -1517,7 +1291,11 @@ async function requestCancelBooking(id) {
         onBookingUpdate(item);
         selectedBooking.value = item;
         CloseModal();
-        MessageModal("success", "Success", response.data?.message || "Cancel request submitted");
+        MessageModal(
+            "success",
+            "Success",
+            response.data?.message || "Cancel request submitted"
+        );
     } catch (e) {
         CloseModal();
         MessageModal("error", "Error", e?.response?.data?.message || e.message);
@@ -1737,19 +1515,21 @@ onMounted(async () => {
 const columns = [
     { header: "No", cell: ({ row }) => row.index + 1, meta: { width: "50px" } },
     {
-        header: "Room Selection", accessorFn: (row) => {
+        header: "Room Selection",
+        accessorFn: (row) => {
             const room = row.room?.name ?? `Room #${row.room_id}`;
             const floor = row.room?.floor ? `Floor ${row.room.floor}` : "";
             const capacity = row.room?.capacity ? `• ${row.room.capacity} Seats` : "";
             return `${room}\n${floor} ${capacity}`;
-        }
+        },
     },
     {
-        header: "User", accessorFn: (row) => {
+        header: "User",
+        accessorFn: (row) => {
             const name = row.user?.name ?? "-";
             const dept = row.user?.department ? `\n${row.user.department}` : "";
             return `${name}${dept}`;
-        }
+        },
     },
     {
         header: "Schedule",
@@ -1757,7 +1537,9 @@ const columns = [
             const start = row.original.start_datetime;
             const end = row.original.end_datetime;
 
-            return `${formatScheduleDate(start)}\n${formatScheduleTime(start)} - ${formatScheduleTime(end)}`;
+            return `${formatScheduleDate(start)}\n${formatScheduleTime(
+                start
+            )} - ${formatScheduleTime(end)}`;
         },
         meta: { align: "center" },
     },
@@ -1776,18 +1558,23 @@ const columns = [
     {
         header: "Status",
         accessorKey: "status",
-        cell: ({ getValue }) => h("span", { class: ["badge", statusBadge(getValue())] }, getValue()),
+        cell: ({ getValue }) =>
+            h("span", { class: ["badge", statusBadge(getValue())] }, getValue()),
         meta: { align: "center" },
     },
     {
         accessorKey: "action",
         header: "Actions",
         cell: ({ row: { original } }) => [
-            h("button", {
-                type: "button",
-                class: "btn btn-sm btn-outline-secondary",
-                onClick: () => viewBooking(original.id),
-            }, h("i", { class: "fa fa-eye" }))
+            h(
+                "button",
+                {
+                    type: "button",
+                    class: "btn btn-sm btn-outline-secondary",
+                    onClick: () => viewBooking(original.id),
+                },
+                h("i", { class: "fa fa-eye" })
+            ),
         ],
         enableSorting: false,
         meta: { align: "center" },

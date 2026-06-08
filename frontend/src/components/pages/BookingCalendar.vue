@@ -13,30 +13,37 @@
                     <div class="card-header">
                         <h3 class="card-title">
                             <i class="fas fa-calendar-alt mr-2"></i>
-                            {{ $t('booking_calendar') }}
+                            {{ $t("booking_calendar") }}
                         </h3>
 
-                        <div class="card-tools d-flex align-items-center" style="gap:8px;">
+                        <div class="card-tools d-flex align-items-center" style="gap: 8px">
                             <div class="calendar-legend mr-2">
-                                <div class="legend-item"><span class="legend-color pending"></span>{{ $t('pending') }}
+                                <div class="legend-item">
+                                    <span class="legend-color pending"></span>{{ $t("pending") }}
                                 </div>
-                                <div class="legend-item"><span class="legend-color approved"></span>{{ $t('approved') }}
+                                <div class="legend-item">
+                                    <span class="legend-color approved"></span>{{ $t("approved") }}
                                 </div>
-                                <div class="legend-item"><span class="legend-color rejected"></span>{{ $t('rejected') }}
+                                <div class="legend-item">
+                                    <span class="legend-color rejected"></span>{{ $t("rejected") }}
                                 </div>
-                                <div class="legend-item"><span class="legend-color cancel_requested"></span>{{
-                                    $t('cancel_requested') }}</div>
-                                <div class="legend-item"><span class="legend-color cancelled"></span>{{ $t('cancelled')
-                                    }}</div>
-                                <div class="legend-item"><span class="legend-color completed"></span>{{ $t('completed')
-                                    }}</div>
-                                <div class="legend-item"><span class="legend-color expired"></span>{{ $t('expired') }}
+                                <div class="legend-item">
+                                    <span class="legend-color cancel_requested"></span>{{ $t("cancel_requested") }}
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color cancelled"></span>{{ $t("cancelled") }}
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color completed"></span>{{ $t("completed") }}
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color expired"></span>{{ $t("expired") }}
                                 </div>
                             </div>
 
                             <button class="btn btn-sm btn-outline-primary" :disabled="loading" @click="refetch">
                                 <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': loading }"></i>
-                                {{ $t('refresh') }}
+                                {{ $t("refresh") }}
                             </button>
                         </div>
                     </div>
@@ -58,7 +65,7 @@
                 <div class="modal-header bg-primary">
                     <h5 class="modal-title">
                         <i class="fas fa-plus-circle mr-2"></i>
-                        {{ bookingForm.id ? $t('edit_booking') : $t('create_booking') }}
+                        {{ bookingForm.id ? $t("edit_booking") : $t("create_booking") }}
                     </h5>
                     <button type="button" class="close text-white" @click="hideCreateModal">
                         <span>&times;</span>
@@ -76,20 +83,20 @@
 
                     <div class="form-row">
                         <div class="form-group col-md-6">
-                            <label>{{ $t('start_datetime') }} <span class="text-danger">*</span></label>
+                            <label>{{ $t("start_datetime") }} <span class="text-danger">*</span></label>
                             <input v-model="bookingForm.start_datetime" type="datetime-local" class="form-control" />
                         </div>
 
                         <div class="form-group col-md-6">
-                            <label>{{ $t('end_datetime') }} <span class="text-danger">*</span></label>
+                            <label>{{ $t("end_datetime") }} <span class="text-danger">*</span></label>
                             <input v-model="bookingForm.end_datetime" type="datetime-local" class="form-control" />
                         </div>
 
-                        <div class="col-md-12 mb-2 d-flex flex-wrap align-items-center" style="gap:8px;">
+                        <div class="col-md-12 mb-2 d-flex flex-wrap align-items-center" style="gap: 8px">
                             <button type="button" class="btn btn-outline-info btn-sm"
                                 :disabled="checkingAvailability || !canCheckAvailability" @click="loadAvailableRooms">
                                 <i class="fas fa-search mr-1" :class="{ 'fa-spin': checkingAvailability }"></i>
-                                {{ checkingAvailability ? $t('loading') : $t('refresh_available_rooms') }}
+                                {{ checkingAvailability ? $t("loading") : $t("refresh_available_rooms") }}
                             </button>
 
                             <small class="text-muted">
@@ -98,16 +105,16 @@
                         </div>
 
                         <div class="form-group col-md-6">
-                            <label>{{ $t('room') }} <span class="text-danger">*</span></label>
+                            <label>{{ $t("room") }} <span class="text-danger">*</span></label>
                             <select class="form-control" v-model="bookingForm.room_id"
                                 :disabled="!canSelectRoom || checkingAvailability">
                                 <option value="" disabled>
                                     {{
                                         checkingAvailability
-                                            ? $t('loading_available_rooms')
+                                            ? $t("loading_available_rooms")
                                             : availableRooms.length
-                                                ? $t('select_room')
-                                                : $t('no_data')
+                                                ? $t("select_room")
+                                    : $t("no_data")
                                     }}
                                 </option>
                                 <option v-for="r in availableRooms" :key="r.id" :value="String(r.id)">
@@ -197,9 +204,13 @@
                 </div>
 
                 <div class="modal-footer justify-content-between">
-                    <button class="btn btn-default" type="button" @click="hideCreateModal">Close</button>
+                    <button class="btn btn-default" type="button" @click="hideCreateModal">
+                        Close
+                    </button>
                     <button class="btn btn-primary" type="button" :disabled="saving" @click="saveBooking">
-                        {{ saving ? "Saving..." : bookingForm.id ? "Update Booking" : "Create Booking" }}
+                        {{
+                            saving ? "Saving..." : bookingForm.id ? "Update Booking" : "Create Booking"
+                        }}
                     </button>
                 </div>
             </div>
@@ -229,8 +240,8 @@
                         <table class="table table-sm table-bordered">
                             <tbody>
                                 <tr>
-                                    <th style="width:170px;">Room</th>
-                                    <td>{{ selected.room?.name ?? ("Room #" + selected.room_id) }}</td>
+                                    <th style="width: 170px">Room</th>
+                                    <td>{{ selected.room?.name ?? "Room #" + selected.room_id }}</td>
                                 </tr>
                                 <tr>
                                     <th>Start</th>
@@ -314,7 +325,7 @@
                 </div>
 
                 <div class="modal-footer justify-content">
-                    <div class="d-flex flex-wrap" style="gap:8px;">
+                    <div class="d-flex flex-wrap" style="gap: 8px">
                         <button v-if="selected && canEdit(selected)" class="btn btn-primary" type="button"
                             @click="editFromDetail">
                             Edit
@@ -365,7 +376,15 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import Swal from "sweetalert2";
 import { CloseModal, LoadingModal, MessageModal } from "@func/swal";
-import { formatFullDateTime } from "@func/datetime";
+import {
+    parseBookingLocalDatetime,
+    parseCambodiaFormDatetime,
+    formatBookingDateTime,
+    formatDateOnly as formatBookingDateOnly,
+    toDatetimeLocalInput,
+    toMysqlDatetime as toBookingMysqlDatetime,
+    isPastBookingEnd,
+} from "@func/bookingTime";
 import { apiGetCalendar } from "@/functions/api/calendar";
 import {
     apiCreateBooking,
@@ -509,94 +528,65 @@ function hideDetailModal() {
         selected.value = null;
     }, 200);
 }
-function parseLocalInput(value) {
-    if (!value) return null;
+/*
+|--------------------------------------------------------------------------
+| Datetime wrappers using base function: @func/bookingTime
+|--------------------------------------------------------------------------
+| All booking start/end time must use Cambodia local booking time.
+|--------------------------------------------------------------------------
+*/
 
-    if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value;
-    }
+// function parseLocalInput(value) {
+//     return parseCambodiaFormDatetime(value);
+// }
 
-    const normalized = String(value).trim().replace(" ", "T");
-    const date = new Date(normalized);
-
-    return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function parseUtcFromApi(value) {
-    if (!value) return null;
-
-    if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value;
-    }
-
-    let normalized = String(value).trim().replace(" ", "T");
-
-    const hasTimezone =
-        normalized.endsWith("Z") ||
-        /[+-]\d{2}:\d{2}$/.test(normalized);
-
-    if (!hasTimezone) {
-        normalized += "Z";
-    }
-
-    const date = new Date(normalized);
-
-    return Number.isNaN(date.getTime()) ? null : date;
-}
+// function parseUtcFromApi(value) {
+//     return parseBookingLocalDatetime(value);
+// }
 
 function toMysqlDatetime(value) {
-    const date = parseLocalInput(value);
-
-    if (!date) return null;
-
-    return date.toISOString().slice(0, 19).replace("T", " ");
+    return toBookingMysqlDatetime(value);
 }
 
+/*
+|--------------------------------------------------------------------------
+| FullCalendar event datetime
+|--------------------------------------------------------------------------
+| Return local datetime string without Z.
+| Example:
+| 2026-06-09 10:00:00 -> 2026-06-09T10:00:00
+|--------------------------------------------------------------------------
+*/
 function normalizeDt(value) {
-    const date = parseUtcFromApi(value);
+    if (!value) return null;
 
-    if (!date) return null;
+    if (value instanceof Date) {
+        return value;
+    }
 
-    return date.toISOString();
+    const localInput = toDatetimeLocalInput(value);
+
+    return localInput ? `${localInput}:00` : null;
 }
 
+/*
+|--------------------------------------------------------------------------
+| datetime-local input value
+|--------------------------------------------------------------------------
+| Example:
+| 2026-06-09 10:00:00 -> 2026-06-09T10:00
+|--------------------------------------------------------------------------
+*/
 function formatForInput(value) {
-    const date = parseUtcFromApi(value);
-
-    if (!date) return "";
-
-    const localDate = new Date(
-        date.getTime() - date.getTimezoneOffset() * 60000
-    );
-
-    return localDate.toISOString().slice(0, 16);
+    return toDatetimeLocalInput(value);
 }
 
 function fmt(value) {
-    const date = parseUtcFromApi(value);
-
-    if (!date) return "-";
-
-    return date.toLocaleString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-    });
+    return formatBookingDateTime(value);
 }
 
 function fmtDateOnly(value) {
-    const date = parseUtcFromApi(value);
-
-    if (!date) return "-";
-
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-    });
+    return formatBookingDateOnly(value);
 }
 function parseRecurrenceDays(value) {
     if (!value) return null;
@@ -606,7 +596,7 @@ function parseRecurrenceDays(value) {
         .map((x) => x.trim().toLowerCase())
         .filter(Boolean);
 }
-
+// For display only, do not save back to database
 function formatRecurrenceDays(value) {
     if (!value) return "-";
     if (Array.isArray(value)) return value.join(", ");
@@ -627,8 +617,8 @@ function isPastDateOnly(date) {
 
 function isPastBooking(booking) {
     if (!booking?.end_datetime) return false;
-    const end = new Date(normalizeDt(booking.end_datetime));
-    return !Number.isNaN(end.getTime()) && end.getTime() < Date.now();
+
+    return isPastBookingEnd(booking.end_datetime);
 }
 
 function statusBadge(status) {
@@ -708,19 +698,30 @@ function canRequestCancel(booking) {
 }
 
 function canApprove(booking) {
-    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending";
+    return (
+        !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending"
+    );
 }
 
 function canReject(booking) {
-    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending";
+    return (
+        !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "pending"
+    );
 }
 
 function canConfirmCancel(booking) {
-    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "cancel_requested";
+    return (
+        !!booking &&
+        isAdmin.value &&
+        !isPastBooking(booking) &&
+        booking.status === "cancel_requested"
+    );
 }
 
 function canAdminDirectCancel(booking) {
-    return !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "approved";
+    return (
+        !!booking && isAdmin.value && !isPastBooking(booking) && booking.status === "approved"
+    );
 }
 
 function canDelete(booking) {
@@ -735,7 +736,12 @@ function canDelete(booking) {
     const currentUserId = Number(currentUser.value?.id ?? 0);
     const ownerId = ownerIdOf(booking);
 
-    return !!currentUserId && !!ownerId && ownerId === currentUserId && booking.status === "pending";
+    return (
+        !!currentUserId &&
+        !!ownerId &&
+        ownerId === currentUserId &&
+        booking.status === "pending"
+    );
 }
 
 function resetForm() {
@@ -770,9 +776,11 @@ async function fillFormFromBooking(booking) {
     bookingForm.recurrence_type = booking.recurrence_type ?? "none";
     bookingForm.recurrence_days = Array.isArray(booking.recurrence_days)
         ? booking.recurrence_days.join(",")
-        : (booking.recurrence_days ?? "");
+        : booking.recurrence_days ?? "";
     bookingForm.recurrence_period = booking.recurrence_period ?? "";
-    bookingForm.recurrence_until = booking.recurrence_until ? String(booking.recurrence_until).slice(0, 10) : "";
+    bookingForm.recurrence_until = booking.recurrence_until
+        ? String(booking.recurrence_until).slice(0, 10)
+        : "";
     bookingForm.meeting_title = booking.meeting_title ?? "";
     bookingForm.meeting_chairman = booking.meeting_chairman ?? "";
     bookingForm.snack_required = !!booking.snack_required;
@@ -815,18 +823,17 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
         }
         return;
     }
+    const start = parseCambodiaFormDatetime(bookingForm.start_datetime);
+    const end = parseCambodiaFormDatetime(bookingForm.end_datetime);
 
-    const start = new Date(normalizeDt(bookingForm.start_datetime));
-    const end = new Date(normalizeDt(bookingForm.end_datetime));
-
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (!start || !end) {
         if (!silent) {
             formError.value = "Invalid start or end datetime.";
         }
         return;
     }
 
-    if (end <= start) {
+    if (end.getTime() <= start.getTime()) {
         if (!silent) {
             formError.value = "End datetime must be after start datetime.";
         }
@@ -869,9 +876,7 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
 
         if (!silent) {
             formError.value =
-                e?.response?.data?.message ||
-                e?.message ||
-                "Failed to check available rooms.";
+                e?.response?.data?.message || e?.message || "Failed to check available rooms.";
         }
     } finally {
         checkingAvailability.value = false;
@@ -895,7 +900,7 @@ async function fetchEvents(info, successCallback, failureCallback) {
                 id: String(b.id),
                 title: b.meeting_title
                     ? `${b.room?.name ?? `Room ${b.room_id}`} - ${b.meeting_title}`
-                    : (b.room?.name ?? `Room ${b.room_id}`),
+                    : b.room?.name ?? `Room ${b.room_id}`,
                 start: normalizeDt(b.start_datetime),
                 end: normalizeDt(b.end_datetime),
                 editable: !isPastBooking(b) && b.status === "pending",
@@ -981,29 +986,33 @@ async function saveBooking() {
         formError.value = "Please select start and end datetime";
         return;
     }
+    const start = parseCambodiaFormDatetime(bookingForm.start_datetime);
+    const end = parseCambodiaFormDatetime(bookingForm.end_datetime);
 
-    const start = new Date(normalizeDt(bookingForm.start_datetime));
-    const end = new Date(normalizeDt(bookingForm.end_datetime));
-
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    if (!start || !end) {
         formError.value = "Invalid datetime";
         return;
     }
 
-    if (start < new Date()) {
+    if (start.getTime() < Date.now()) {
         formError.value = "Cannot select past time.";
         return;
     }
 
-    if (end <= start) {
+    if (end.getTime() <= start.getTime()) {
         formError.value = "End datetime must be after start datetime";
         return;
     }
 
     const recurrenceDays = parseRecurrenceDays(bookingForm.recurrence_days);
-    const recurrencePeriod = bookingForm.recurrence_period ? Number(bookingForm.recurrence_period) : null;
+    const recurrencePeriod = bookingForm.recurrence_period
+        ? Number(bookingForm.recurrence_period)
+        : null;
 
-    if (bookingForm.recurrence_type === "weekly" && (!recurrenceDays || recurrenceDays.length === 0)) {
+    if (
+        bookingForm.recurrence_type === "weekly" &&
+        (!recurrenceDays || recurrenceDays.length === 0)
+    ) {
         formError.value = "Weekly recurrence requires recurrence days.";
         return;
     }
@@ -1023,7 +1032,10 @@ async function saveBooking() {
         return;
     }
 
-    if (bookingForm.technician_required && !String(bookingForm.technician_note || "").trim()) {
+    if (
+        bookingForm.technician_required &&
+        !String(bookingForm.technician_note || "").trim()
+    ) {
         formError.value = "Technician note is required.";
         return;
     }
@@ -1044,9 +1056,11 @@ async function saveBooking() {
             meeting_title: bookingForm.meeting_title || null,
             meeting_chairman: bookingForm.meeting_chairman || null,
             snack_required: !!bookingForm.snack_required,
-            snack_note: bookingForm.snack_required ? (bookingForm.snack_note || null) : null,
+            snack_note: bookingForm.snack_required ? bookingForm.snack_note || null : null,
             technician_required: !!bookingForm.technician_required,
-            technician_note: bookingForm.technician_required ? (bookingForm.technician_note || null) : null,
+            technician_note: bookingForm.technician_required
+                ? bookingForm.technician_note || null
+                : null,
         };
 
         let response = null;
@@ -1064,7 +1078,8 @@ async function saveBooking() {
         MessageModal(
             "success",
             "Success",
-            response?.data?.message || (bookingForm.id ? "Booking updated successfully" : "Booking created successfully")
+            response?.data?.message ||
+            (bookingForm.id ? "Booking updated successfully" : "Booking created successfully")
         );
     } catch (e) {
         CloseModal();
@@ -1090,7 +1105,11 @@ async function eventClick(info) {
     if (!booking?.id) return;
 
     if (isPastBooking(booking)) {
-        return MessageModal("warning", "Expired", "This booking has already expired and cannot be opened.");
+        return MessageModal(
+            "warning",
+            "Expired",
+            "This booking has already expired and cannot be opened."
+        );
     }
 
     detailLoading.value = true;
@@ -1105,7 +1124,11 @@ async function eventClick(info) {
     } catch (e) {
         CloseModal();
         hideDetailModal();
-        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to load booking detail");
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to load booking detail"
+        );
     } finally {
         detailLoading.value = false;
     }
@@ -1216,7 +1239,7 @@ async function onRequestCancel(booking) {
         inputLabel: "Reason",
         inputPlaceholder: "Enter cancel reason...",
         inputAttributes: {
-            "aria-label": "Enter cancel reason"
+            "aria-label": "Enter cancel reason",
         },
         showCancelButton: true,
         confirmButtonColor: "#f39c12",
@@ -1234,7 +1257,7 @@ async function onRequestCancel(booking) {
             if (!String(value || "").trim()) {
                 return "Cancel reason is required";
             }
-        }
+        },
     });
 
     if (!result.isConfirmed) return;
@@ -1247,10 +1270,18 @@ async function onRequestCancel(booking) {
         });
         await reloadBookingAfterAction(booking.id);
         CloseModal();
-        MessageModal("success", "Success", response?.data?.message || "Cancel request submitted");
+        MessageModal(
+            "success",
+            "Success",
+            response?.data?.message || "Cancel request submitted"
+        );
     } catch (e) {
         CloseModal();
-        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to request cancel");
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to request cancel"
+        );
     } finally {
         actionLoading.value = false;
     }
@@ -1279,7 +1310,11 @@ async function onApproveBooking(booking) {
         MessageModal("success", "Success", response?.data?.message || "Booking approved");
     } catch (e) {
         CloseModal();
-        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to approve booking");
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to approve booking"
+        );
     } finally {
         actionLoading.value = false;
     }
@@ -1295,7 +1330,7 @@ async function onRejectBooking(booking) {
         inputLabel: "Reason",
         inputPlaceholder: "Enter reject reason...",
         inputAttributes: {
-            "aria-label": "Enter reject reason"
+            "aria-label": "Enter reject reason",
         },
         showCancelButton: true,
         confirmButtonColor: "#d33",
@@ -1313,7 +1348,7 @@ async function onRejectBooking(booking) {
             if (!String(value || "").trim()) {
                 return "Reject reason is required";
             }
-        }
+        },
     });
 
     if (!result.isConfirmed) return;
@@ -1329,7 +1364,11 @@ async function onRejectBooking(booking) {
         MessageModal("success", "Success", response?.data?.message || "Booking rejected");
     } catch (e) {
         CloseModal();
-        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to reject booking");
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to reject booking"
+        );
     } finally {
         actionLoading.value = false;
     }
@@ -1358,7 +1397,11 @@ async function onConfirmCancel(booking) {
         MessageModal("success", "Success", response?.data?.message || "Booking cancelled");
     } catch (e) {
         CloseModal();
-        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to confirm cancel");
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to confirm cancel"
+        );
     } finally {
         actionLoading.value = false;
     }
@@ -1387,7 +1430,11 @@ async function onAdminDirectCancel(booking) {
         MessageModal("success", "Success", response?.data?.message || "Booking cancelled");
     } catch (e) {
         CloseModal();
-        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to force cancel booking");
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to force cancel booking"
+        );
     } finally {
         actionLoading.value = false;
     }
@@ -1417,7 +1464,11 @@ async function onDeleteBooking(booking) {
         MessageModal("success", "Success", response?.data?.message || "Booking deleted");
     } catch (e) {
         CloseModal();
-        MessageModal("error", "Error", e?.response?.data?.message || e?.message || "Failed to delete booking");
+        MessageModal(
+            "error",
+            "Error",
+            e?.response?.data?.message || e?.message || "Failed to delete booking"
+        );
     } finally {
         actionLoading.value = false;
     }
@@ -1514,11 +1565,11 @@ const calendarOptions = {
     padding: 2px 6px !important;
     font-size: 12px !important;
     font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 :deep(.fc .fc-day-today) {
-    background: rgba(0, 123, 255, .08) !important;
+    background: rgba(0, 123, 255, 0.08) !important;
 }
 
 :deep(.fc-event-pending) {
@@ -1545,7 +1596,7 @@ const calendarOptions = {
     background: #6c757d !important;
     color: #fff !important;
     text-decoration: line-through;
-    opacity: .9;
+    opacity: 0.9;
 }
 
 :deep(.fc-event-completed) {
@@ -1559,7 +1610,7 @@ const calendarOptions = {
 }
 
 :deep(.fc-event-expired) {
-    opacity: .55 !important;
+    opacity: 0.55 !important;
     cursor: not-allowed !important;
     filter: grayscale(20%);
 }

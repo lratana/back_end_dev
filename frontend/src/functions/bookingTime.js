@@ -1,3 +1,4 @@
+
 export const BOOKING_TIME_ZONE = "Asia/Phnom_Penh";
 
 /*
@@ -121,6 +122,8 @@ export function formatBookingTime(value) {
     }).format(date);
 }
 
+
+// For example: Jun 9, 2026, 10:00 AM
 export function formatBookingDateTime(value) {
     const date = parseBookingLocalDatetime(value);
 
@@ -135,6 +138,7 @@ export function formatBookingDateTime(value) {
         minute: "2-digit",
         hour12: true,
     }).format(date);
+
 }
 
 export function formatSystemDateTime(value) {
