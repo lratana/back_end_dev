@@ -42,7 +42,7 @@
                             <label class="d-block">Photo</label>
 
                             <img :src="previewImage || defaultAvatar" alt="User Photo" class="img-thumbnail mb-2"
-                                style="width: 110px; height: 110px; object-fit: cover; border-radius: 50%;" />
+                                style="width: 110px; height: 110px; object-fit: cover; border-radius: 50%" />
 
                             <input type="file" class="form-control" accept="image/*" @change="onPhotoChange"
                                 :class="{ 'is-invalid': userObjectErr.photo }" />
@@ -92,15 +92,22 @@
                             </select>
                             <div class="invalid-feedback">{{ userObjectErr.department_id }}</div>
                         </div>
+                        <div class="form-group">
+                            <label for="userLevel">Level</label>
+                            <select id="userLevel" class="form-control" v-model="userObject.level"
+                                :class="{ 'is-invalid': userObjectErr.level }">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                            <div class="invalid-feedback">{{ userObjectErr.level }}</div>
+                        </div>
                     </div>
 
                     <div class="modal-footer justify-content-between">
                         <button type="button" class="btn btn-default" @click="hideUserModal">
                             Close
                         </button>
-                        <button type="submit" class="btn btn-primary">
-                            Save changes
-                        </button>
+                        <button type="submit" class="btn btn-primary">Save changes</button>
                     </div>
                 </div>
             </div>
@@ -120,6 +127,7 @@ import {
     apiCreateUser,
     apiUpdateUser,
     apiDeleteUser,
+    apiUpdateUserLevel,
 } from "@func/api/user";
 
 import { apiGetDepartments } from "@func/api/department";
@@ -138,6 +146,7 @@ const userObject = reactive({
     phone: "",
     password: "",
     department_id: null,
+    level: "user",
     photo: null,
 });
 
@@ -147,6 +156,7 @@ const userObjectErr = reactive({
     phone: "",
     password: "",
     department_id: "",
+    level: "",
     photo: "",
 });
 
@@ -158,6 +168,7 @@ function getDefaultUserObject() {
         phone: "",
         password: "",
         department_id: null,
+        level: "user",
         photo: null,
     };
 }
@@ -169,6 +180,7 @@ function getDefaultUserObjectErr() {
         phone: "",
         password: "",
         department_id: "",
+        level: "",
         photo: "",
     };
 }
@@ -210,6 +222,47 @@ const columns = [
                 original: { department },
             },
         }) => department?.name || "-",
+    },
+    {
+        id: "level",
+        header: "Level",
+        cell: ({ row }) => {
+            const user = row.original;
+            const userId = user.id ?? user.user_id;
+            const currentLevel = user.level === "admin" ? "admin" : "user";
+
+            const levelClass =
+                currentLevel === "admin"
+                    ? "form-control form-control-sm bg-primary text-white font-weight-bold"
+                    : "form-control form-control-sm bg-secondary text-white font-weight-bold";
+
+            return h(
+                "select",
+                {
+                    class: levelClass,
+                    style: `
+                    min-width: 95px;
+                    border-radius: 20px;
+                    border: none;
+                    padding-left: 12px;
+                    cursor: pointer;
+                `,
+                    value: currentLevel,
+                    disabled: !userId,
+                    onChange: (event) => {
+                        const newLevel = event.target.value;
+
+                        if (!userId) {
+                            MessageModal("error", "Error", "User ID not found.");
+                            return;
+                        }
+
+                        updateUserLevel(userId, newLevel);
+                    },
+                },
+                [h("option", { value: "user" }, "User"), h("option", { value: "admin" }, "Admin")]
+            );
+        },
     },
     {
         accessorKey: "action",
@@ -311,6 +364,7 @@ async function saveUser() {
         const formData = new FormData();
         formData.append("name", userObject.name || "");
         formData.append("email", userObject.email || "");
+        formData.append("level", userObject.level || "user");
 
         if (userObject.phone && userObject.phone.trim() !== "") {
             formData.append("phone", userObject.phone.trim());
@@ -381,6 +435,7 @@ async function viewUser(id) {
             phone: user.phone || "",
             password: "",
             department_id: user.department_id ?? user.department?.id ?? null,
+            level: user.level || "user",
             photo: user.photo || null,
         });
 
@@ -424,6 +479,30 @@ async function removeUser(id) {
             }
         }
     });
+}
+
+async function updateUserLevel(id, level) {
+    try {
+        if (!id) {
+            MessageModal("error", "Error", "Invalid user ID.");
+            return;
+        }
+
+        LoadingModal();
+
+        const response = await apiUpdateUserLevel(id, level);
+
+        users.value = users.value.map((user) =>
+            Number(user.id ?? user.user_id) === Number(id) ? { ...user, level } : user
+        );
+
+        CloseModal();
+        MessageModal("success", "Success", response.data.message);
+    } catch (error) {
+        CloseModal();
+
+        MessageModal("error", "Error", error?.response?.data?.message || error.message);
+    }
 }
 
 function showUserModal() {

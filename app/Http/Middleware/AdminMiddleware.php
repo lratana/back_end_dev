@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class AdminMiddleware
 {
@@ -13,8 +12,10 @@ class AdminMiddleware
     {
         $user = $request->user();
 
-        if (!$user || !in_array($user->level, ['admin', 'super_admin'], true)) {
-            throw new AccessDeniedHttpException('You do not have permission to access this resource.');
+        if (!$user || $user->level !== 'admin') {
+            return response()->json([
+                'message' => 'Only admin can access this resource.',
+            ], 403);
         }
 
         return $next($request);

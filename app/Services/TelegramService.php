@@ -53,19 +53,55 @@ class TelegramService
         }
     }
 
+    private function formatBookingLocalTime(?string $value): string
+    {
+        if (!$value) {
+            return '-';
+        }
+
+        /*
+         * Booking datetime is Cambodia local time.
+         *
+         * Example DB value:
+         * 2026-06-09 10:00:00
+         *
+         * Meaning:
+         * 10:00 AM Cambodia time.
+         *
+         * Do NOT call ->timezone('Asia/Phnom_Penh') here,
+         * because that will add +7 hours if Laravel treats it as UTC.
+         */
+        $text = str_replace('T', ' ', trim($value));
+        $text = substr($text, 0, 19);
+
+        try {
+            return Carbon::createFromFormat(
+                'Y-m-d H:i:s',
+                $text,
+                'Asia/Phnom_Penh'
+            )->format('d M Y, h:i A');
+        } catch (\Throwable $e) {
+            Log::warning('Invalid booking datetime for Telegram alert', [
+                'value' => $value,
+                'message' => $e->getMessage(),
+            ]);
+
+            return '-';
+        }
+    }
+
     public function sendBookingAlert(Booking $booking, string $title, string $message): bool
     {
         $booking->loadMissing(['room', 'user']);
 
-        $timezone = config('telegram.timezone', 'Asia/Phnom_Penh');
+        /*
+         * Use raw DB values to avoid Eloquent/Carbon timezone conversion.
+         */
+        $rawStart = $booking->getRawOriginal('start_datetime');
+        $rawEnd = $booking->getRawOriginal('end_datetime');
 
-        $start = $booking->start_datetime
-            ? Carbon::parse($booking->start_datetime)->timezone($timezone)->format('d M Y, h:i A')
-            : '-';
-
-        $end = $booking->end_datetime
-            ? Carbon::parse($booking->end_datetime)->timezone($timezone)->format('d M Y, h:i A')
-            : '-';
+        $start = $this->formatBookingLocalTime($rawStart);
+        $end = $this->formatBookingLocalTime($rawEnd);
 
         $room = e($booking->room->name ?? 'Room #' . $booking->room_id);
         $user = e($booking->user->name ?? 'User #' . $booking->user_id);

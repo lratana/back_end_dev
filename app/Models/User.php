@@ -146,4 +146,13 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
         return $message;
     }
+    public function isAdmin(): bool
+    {
+        return $this->level === 'admin';
+    }
+
+    public function isUser(): bool
+    {
+        return $this->level === 'user';
+    }
 }

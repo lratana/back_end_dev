@@ -54,7 +54,7 @@ class UserController extends Controller
                 });
             })
             ->where('id', '<>', $user->id)
-            ->where('level', '<>', 'admin');
+            ->whereIn('level', ['user', 'admin']);
 
         $users = $query->paginate($perPage ?: $query->count());
 
@@ -71,7 +71,7 @@ class UserController extends Controller
         $targetUser = User::with('department')
             ->where('id', $id)
             ->where('id', '<>', $user->id)
-            ->where('level', '<>', 'admin')
+            ->whereIn('level', ['user', 'admin'])
             ->firstOrFail();
 
         return response([
@@ -144,7 +144,7 @@ class UserController extends Controller
         $targetUser = User::with('department')
             ->where('id', $id)
             ->where('id', '<>', $user->id)
-            ->where('level', '<>', 'admin')
+            ->whereIn('level', ['user', 'admin'])
             ->firstOrFail();
 
         try {
@@ -198,14 +198,25 @@ class UserController extends Controller
         ], 200);
     }
 
+
     public function deleteUser(Request $request, $id)
     {
         $user = $request->user();
 
         $targetUser = User::where('id', $id)
             ->where('id', '<>', $user->id)
-            ->where('level', '<>', 'admin')
+            ->whereIn('level', ['user', 'admin'])
             ->firstOrFail();
+
+        if ($targetUser->level === 'admin') {
+            $adminCount = User::where('level', 'admin')->count();
+
+            if ($adminCount <= 1) {
+                return response()->json([
+                    'message' => 'Cannot delete the last admin.',
+                ], 422);
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -231,5 +242,55 @@ class UserController extends Controller
         return response([
             'message' => 'User deleted.'
         ], 200);
+    }
+
+    public function updateUserLevel(Request $request, $id)
+    {
+        $request->validate([
+            'level' => 'required|in:user,admin',
+        ]);
+
+        $authUser = $request->user();
+
+        if (!$authUser || $authUser->level !== 'admin') {
+            return response()->json([
+                'message' => 'Only admin can update user level.',
+            ], 403);
+        }
+
+        if ((int) $authUser->id === (int) $id) {
+            return response()->json([
+                'message' => 'You cannot change your own level.',
+            ], 422);
+        }
+
+        $targetUser = User::find($id);
+
+        if (!$targetUser) {
+            return response()->json([
+                'message' => 'User not found. Invalid user ID: ' . $id,
+            ], 404);
+        }
+
+        if ($targetUser->level === 'admin' && $request->level === 'user') {
+            $adminCount = User::where('level', 'admin')->count();
+
+            if ($adminCount <= 1) {
+                return response()->json([
+                    'message' => 'Cannot remove the last admin.',
+                ], 422);
+            }
+        }
+
+        $targetUser->update([
+            'level' => $request->level,
+        ]);
+
+        $targetUser->tokens()->delete();
+
+        return response()->json([
+            'message' => 'User level updated successfully.',
+            'user' => $targetUser,
+        ]);
     }
 }

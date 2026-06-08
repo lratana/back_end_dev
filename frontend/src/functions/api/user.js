@@ -25,6 +25,12 @@ export function apiUpdateUser(id, data) {
         },
     });
 }
+// Update user level (admin/user)
+export function apiUpdateUserLevel(id, level) {
+    return axios.put(window.API_URL + `/manage/users/${id}/level`, {
+        level,
+    });
+}
 
 export function apiDeleteUser(id) {
     return axios.delete(window.API_URL + `/manage/users/delete/${id}`);

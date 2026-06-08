@@ -39,6 +39,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::PATCH('/update/photo', [AuthController::class, 'updateUserPhoto']);
 
 
+
     // Backup routes
     // Admin-only routes
     Route::middleware('admin')->group(function () {
@@ -55,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/create', [UserController::class, 'createUser']);
                 Route::put('/update/{id}', [UserController::class, 'updateUser']);
                 Route::delete('/delete/{id}', [UserController::class, 'deleteUser']);
+                Route::put('/{id}/level', [UserController::class, 'updateUserLevel']);
             });
         });
         // Departments
