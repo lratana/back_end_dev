@@ -323,9 +323,40 @@ class BookingController extends Controller
             'start_datetime' => ['required', 'date'],
             'end_datetime' => ['required', 'date', 'after:start_datetime'],
             'ignore_id' => ['nullable', 'integer'],
+
+            'participants' => ['nullable', 'integer', 'min:1'],
+            'equipment' => ['nullable', 'string'],
         ]);
 
+        $participants = (int) ($data['participants'] ?? 0);
+        $equipment = strtolower(trim($data['equipment'] ?? ''));
+
         $rooms = Room::query()
+            ->with(['department', 'equipment', 'images'])
+            ->when($participants > 0, function ($query) use ($participants) {
+                $query->where('capacity', '>=', $participants);
+            })
+            ->when($equipment !== '' && $equipment !== 'any', function ($query) use ($equipment) {
+                $query->whereHas('equipment', function ($sub) use ($equipment) {
+                    $sub->whereRaw('LOWER(name) LIKE ?', ["%{$equipment}%"]);
+
+                    if (str_contains($equipment, 'lcd')) {
+                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%projector%']);
+                    }
+
+                    if (str_contains($equipment, 'projector')) {
+                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%lcd%']);
+                    }
+
+                    if (str_contains($equipment, 'video')) {
+                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%conference%']);
+                    }
+
+                    if (str_contains($equipment, 'whiteboard')) {
+                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%board%']);
+                    }
+                });
+            })
             ->get()
             ->filter(function ($room) use ($data) {
                 return !$this->hasConflict(
@@ -415,27 +446,21 @@ class BookingController extends Controller
         if (!$user || $booking->user_id !== $user->id) {
             return response()->json([
                 'message' => 'Unauthorized',
+                'can_extend' => false,
             ], 403);
         }
 
-        /*
-     * Only approved meetings can be extended immediately.
-     * Pending bookings must be approved first.
-     */
         if ($booking->status !== 'approved') {
             return response()->json([
                 'message' => 'Only approved bookings can be extended',
+                'can_extend' => false,
             ], 422);
         }
 
-        /*
-     * Recommended restriction:
-     * The current recurrence implementation uses one stored duration
-     * for all generated occurrences. Extending it would affect the series.
-     */
         if (($booking->recurrence_type ?? 'none') !== 'none') {
             return response()->json([
                 'message' => 'Recurring bookings cannot be extended individually yet',
+                'can_extend' => false,
             ], 422);
         }
 
@@ -448,17 +473,21 @@ class BookingController extends Controller
         $oldEnd = $booking->end_datetime->copy();
 
         /*
-     * Allow extra time only while the meeting is currently running.
+     * Check current meeting:
+     * Meeting can be extended only if:
+     * start_datetime <= now < end_datetime
      */
         if ($now->lt($meetingStart)) {
             return response()->json([
                 'message' => 'This meeting has not started yet',
+                'can_extend' => false,
             ], 422);
         }
 
         if ($now->gte($oldEnd)) {
             return response()->json([
                 'message' => 'This meeting has already ended and cannot be extended',
+                'can_extend' => false,
             ], 422);
         }
 
@@ -466,8 +495,8 @@ class BookingController extends Controller
         $newEnd = $oldEnd->copy()->addHours($extraHours);
 
         /*
-     * Check only the additional time range:
-     * current end time -> requested new end time.
+     * Check conflict only for the extra time:
+     * old end time -> new end time
      */
         if ($this->hasConflict(
             $booking->room_id,
@@ -477,22 +506,21 @@ class BookingController extends Controller
         )) {
             return response()->json([
                 'message' => 'Cannot extend meeting because the room is already booked during the additional time',
+                'can_extend' => false,
+                'extension' => [
+                    'extra_hours' => $extraHours,
+                    'old_end_datetime' => $oldEnd->toDateTimeString(),
+                    'requested_new_end_datetime' => $newEnd->toDateTimeString(),
+                ],
             ], 422);
         }
 
-        /*
-     * Keep approved status. No new approval is required.
-     */
         $booking->update([
             'end_datetime' => $newEnd,
         ]);
 
         $booking->load(['room', 'user']);
 
-        /*
-     * Inform admins only. This is not an approval request.
-     * Remove this block when no notification is needed.
-     */
         $this->notifyAdmins(
             $booking,
             'Meeting Time Extended',
@@ -501,6 +529,7 @@ class BookingController extends Controller
 
         return response()->json([
             'message' => "Meeting extended successfully by {$extraHours} hour(s).",
+            'can_extend' => true,
             'data' => $booking,
             'extension' => [
                 'extra_hours' => $extraHours,
