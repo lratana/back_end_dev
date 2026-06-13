@@ -35,7 +35,6 @@ class BookingController extends Controller
     {
         return $booking->end_datetime && $booking->end_datetime->isPast();
     }
-
     private function weekdayMap(): array
     {
         return [
