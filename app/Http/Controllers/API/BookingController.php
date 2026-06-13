@@ -24,13 +24,36 @@ class BookingController extends Controller
     {
         return Booking::query()
             ->where('room_id', $roomId)
-            ->whereIn('status', ['pending', 'approved'])
+            ->whereIn('status', ['pending', 'approved', 'in_meeting', 'cancel_requested'])
             ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
             ->where('start_datetime', '<', $end)
             ->where('end_datetime', '>', $start)
             ->exists();
     }
 
+    private function syncMeetingStatuses(): void
+    {
+        $now = now();
+
+        // Approved meeting starts automatically
+        Booking::query()
+            ->where('status', 'approved')
+            ->where('start_datetime', '<=', $now)
+            ->where('end_datetime', '>', $now)
+            ->update([
+                'status' => 'in_meeting',
+                'updated_at' => $now,
+            ]);
+
+        // Meeting ends automatically
+        Booking::query()
+            ->whereIn('status', ['approved', 'in_meeting'])
+            ->where('end_datetime', '<=', $now)
+            ->update([
+                'status' => 'completed',
+                'updated_at' => $now,
+            ]);
+    }
     private function isPastBooking(Booking $booking): bool
     {
         return $booking->end_datetime && $booking->end_datetime->isPast();
@@ -318,6 +341,8 @@ class BookingController extends Controller
 
     public function availableRooms(Request $request)
     {
+        $this->syncMeetingStatuses();
+
         $data = $request->validate([
             'start_datetime' => ['required', 'date'],
             'end_datetime' => ['required', 'date', 'after:start_datetime'],
@@ -377,6 +402,7 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
+        $this->syncMeetingStatuses();
         $perPage = (int) $request->get('per_page', 10);
         $roomId = $request->integer('room_id');
         $status = $request->string('status')->toString();
@@ -449,9 +475,9 @@ class BookingController extends Controller
             ], 403);
         }
 
-        if ($booking->status !== 'approved') {
+        if (!in_array($booking->status, ['approved', 'in_meeting'], true)) {
             return response()->json([
-                'message' => 'Only approved bookings can be extended',
+                'message' => 'Only approved or running meetings can be extended',
                 'can_extend' => false,
             ], 422);
         }
@@ -671,8 +697,14 @@ class BookingController extends Controller
             ], 422);
         }
 
+        $now = now();
+
+        $newStatus = $booking->start_datetime <= $now && $booking->end_datetime > $now
+            ? 'in_meeting'
+            : 'approved';
+
         $booking->update([
-            'status' => 'approved',
+            'status' => $newStatus,
             'reject_reason' => null,
         ]);
 
@@ -847,6 +879,7 @@ class BookingController extends Controller
 
     public function dashboard(Request $request)
     {
+        $this->syncMeetingStatuses();
         $now = now();
         $todayStart = now()->copy()->startOfDay();
         $todayEnd = now()->copy()->endOfDay();
@@ -941,6 +974,7 @@ class BookingController extends Controller
 
     public function calendar(Request $request)
     {
+        $this->syncMeetingStatuses();
         $data = $request->validate([
             'start' => ['required', 'date'],
             'end' => ['required', 'date', 'after:start'],

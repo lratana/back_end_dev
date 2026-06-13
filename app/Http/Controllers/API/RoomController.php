@@ -14,10 +14,77 @@ use Illuminate\Support\Facades\Storage;
 
 class RoomController extends Controller
 {
+
+    private function applyCurrentStatusToRoom(Room $room, $now): Room
+    {
+        $currentBooking = $room->bookings->first(function ($booking) use ($now) {
+            return $booking->start_datetime <= $now &&
+                $booking->end_datetime > $now;
+        });
+
+        if ($currentBooking) {
+            $room->current_status = 'in_meeting';
+            $room->status = 'in_meeting';
+
+            $room->current_status_label = 'In Meeting';
+            $room->current_status_color = 'danger';
+            $room->current_status_icon = 'event_busy';
+
+            $room->current_booking_id = $currentBooking->id;
+            $room->current_meeting_title = $currentBooking->meeting_title;
+            $room->current_meeting_chairman = $currentBooking->meeting_chairman;
+            $room->current_start_datetime = optional($currentBooking->start_datetime)->toDateTimeString();
+            $room->current_end_datetime = optional($currentBooking->end_datetime)->toDateTimeString();
+        } else {
+            $room->current_status = 'available';
+            $room->status = 'available';
+
+            $room->current_status_label = 'Available';
+            $room->current_status_color = 'success';
+            $room->current_status_icon = 'check_circle';
+
+            $room->current_booking_id = null;
+            $room->current_meeting_title = null;
+            $room->current_meeting_chairman = null;
+            $room->current_start_datetime = null;
+            $room->current_end_datetime = null;
+        }
+
+        unset($room->bookings);
+
+        return $room;
+    }
+
+    private function syncMeetingStatuses(): void
+    {
+        $now = now();
+
+        // Auto start approved meetings
+        DB::table('bookings')
+            ->where('status', 'approved')
+            ->where('start_datetime', '<=', $now)
+            ->where('end_datetime', '>', $now)
+            ->update([
+                'status' => 'in_meeting',
+                'updated_at' => $now,
+            ]);
+
+        // Auto complete ended meetings
+        DB::table('bookings')
+            ->whereIn('status', ['approved', 'in_meeting'])
+            ->where('end_datetime', '<=', $now)
+            ->update([
+                'status' => 'completed',
+                'updated_at' => $now,
+            ]);
+    }
     public function index(Request $request)
     {
+        $this->syncMeetingStatuses();
+
         $q = $request->string('q')->toString();
         $perPage = (int) $request->get('per_page', 10);
+        $now = now();
 
         $rooms = Room::query()
             ->when($q, function ($query) use ($q) {
@@ -26,18 +93,56 @@ class RoomController extends Controller
                         ->orWhere('location', 'like', "%{$q}%");
                 });
             })
-            ->with(['department', 'equipment', 'images'])
+            ->with([
+                'department',
+                'equipment',
+                'images',
+                'bookings' => function ($query) use ($now) {
+                    $query->whereIn('status', ['approved', 'in_meeting'])
+                        ->where(function ($q) use ($now) {
+                            $q->where(function ($qq) use ($now) {
+                                $qq->where('start_datetime', '<=', $now)
+                                    ->where('end_datetime', '>', $now);
+                            })->orWhere('start_datetime', '>', $now);
+                        })
+                        ->orderBy('start_datetime');
+                },
+            ])
             ->latest()
             ->paginate($perPage);
+
+        $rooms->getCollection()->transform(function ($room) use ($now) {
+            return $this->applyCurrentStatusToRoom($room, $now);
+        });
 
         return response()->json($rooms);
     }
 
     public function show(Room $room)
     {
-        $room->load(['department', 'equipment', 'images']);
+        $this->syncMeetingStatuses();
 
-        return response()->json($room);
+        $now = now();
+
+        $room->load([
+            'department',
+            'equipment',
+            'images',
+            'bookings' => function ($query) use ($now) {
+                $query->whereIn('status', ['approved', 'in_meeting'])
+                    ->where(function ($q) use ($now) {
+                        $q->where(function ($qq) use ($now) {
+                            $qq->where('start_datetime', '<=', $now)
+                                ->where('end_datetime', '>', $now);
+                        })->orWhere('start_datetime', '>', $now);
+                    })
+                    ->orderBy('start_datetime');
+            },
+        ]);
+
+        return response()->json(
+            $this->applyCurrentStatusToRoom($room, $now)
+        );
     }
 
     public function store(StoreRoomRequest $request)
