@@ -147,6 +147,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('booking-reports')->group(function () {
         Route::get('/', [BookingReportController::class, 'index']);
     });
+
     // Notifications
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);
