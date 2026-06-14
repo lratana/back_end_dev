@@ -352,48 +352,54 @@ class BookingController extends Controller
             'equipment' => ['nullable', 'string'],
         ]);
 
+        $start = Carbon::parse($data['start_datetime'])->toDateTimeString();
+        $end = Carbon::parse($data['end_datetime'])->toDateTimeString();
+        $ignoreId = $data['ignore_id'] ?? null;
         $participants = (int) ($data['participants'] ?? 0);
-        $equipment = strtolower(trim($data['equipment'] ?? ''));
+
+        $equipmentNames = collect(explode(',', $data['equipment'] ?? ''))
+            ->map(fn($name) => strtolower(trim($name)))
+            ->filter()
+            ->reject(fn($name) => $name === 'any')
+            ->values();
 
         $rooms = Room::query()
             ->with(['department', 'equipment', 'images'])
             ->when($participants > 0, function ($query) use ($participants) {
                 $query->where('capacity', '>=', $participants);
             })
-            ->when($equipment !== '' && $equipment !== 'any', function ($query) use ($equipment) {
-                $query->whereHas('equipment', function ($sub) use ($equipment) {
-                    $sub->whereRaw('LOWER(name) LIKE ?', ["%{$equipment}%"]);
+            ->whereDoesntHave('bookings', function ($query) use ($start, $end, $ignoreId) {
+                $query->whereIn('status', [
+                    'pending',
+                    'approved',
+                    'in_meeting',
+                    'cancel_requested',
+                ])
+                    ->when($ignoreId, function ($query) use ($ignoreId) {
+                        $query->where('id', '!=', $ignoreId);
+                    })
+                    ->where('start_datetime', '<', $end)
+                    ->where('end_datetime', '>', $start);
+            });
 
-                    if (str_contains($equipment, 'lcd')) {
-                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%projector%']);
-                    }
+        foreach ($equipmentNames as $equipmentName) {
+            $rooms->whereHas('equipment', function ($query) use ($equipmentName) {
+                $query->whereRaw('LOWER(name) = ?', [$equipmentName])
+                    ->orWhereRaw('LOWER(name) LIKE ?', ["%{$equipmentName}%"]);
+            });
+        }
 
-                    if (str_contains($equipment, 'projector')) {
-                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%lcd%']);
-                    }
-
-                    if (str_contains($equipment, 'video')) {
-                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%conference%']);
-                    }
-
-                    if (str_contains($equipment, 'whiteboard')) {
-                        $sub->orWhereRaw('LOWER(name) LIKE ?', ['%board%']);
-                    }
-                });
-            })
-            ->get()
-            ->filter(function ($room) use ($data) {
-                return !$this->hasConflict(
-                    $room->id,
-                    $data['start_datetime'],
-                    $data['end_datetime'],
-                    $data['ignore_id'] ?? null
-                );
-            })
-            ->values();
+        $rooms = $rooms->get();
 
         return response()->json([
             'data' => $rooms,
+            'debug' => [
+                'start_datetime' => $start,
+                'end_datetime' => $end,
+                'participants' => $participants,
+                'equipment' => $equipmentNames,
+                'room_count' => $rooms->count(),
+            ],
             'message' => $rooms->count()
                 ? 'Available rooms fetched successfully'
                 : 'No available rooms found',
