@@ -885,7 +885,7 @@ class BookingController extends Controller
 
     public function dashboard(Request $request)
     {
-        $this->syncMeetingStatuses();
+        // $this->syncMeetingStatuses();
         $now = now();
         $todayStart = now()->copy()->startOfDay();
         $todayEnd = now()->copy()->endOfDay();
