@@ -80,7 +80,7 @@ class RoomController extends Controller
     }
     public function index(Request $request)
     {
-        $this->syncMeetingStatuses();
+        // $this->syncMeetingStatuses();
 
         $q = $request->string('q')->toString();
         $perPage = (int) $request->get('per_page', 10);
