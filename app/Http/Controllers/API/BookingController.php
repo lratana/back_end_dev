@@ -39,7 +39,7 @@ class BookingController extends Controller
     private function syncMeetingStatuses(): void
     {
         $now = now();
-
+        //
         // Approved meeting starts automatically
         Booking::query()
             ->where('status', 'approved')
