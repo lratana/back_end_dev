@@ -341,7 +341,7 @@ class BookingController extends Controller
 
     public function availableRooms(Request $request)
     {
-        $this->syncMeetingStatuses();
+        // $this->syncMeetingStatuses();
 
         $data = $request->validate([
             'start_datetime' => ['required', 'date'],
@@ -408,7 +408,7 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        $this->syncMeetingStatuses();
+        // $this->syncMeetingStatuses();
         $perPage = (int) $request->get('per_page', 10);
         $roomId = $request->integer('room_id');
         $status = $request->string('status')->toString();
@@ -981,7 +981,7 @@ class BookingController extends Controller
 
     public function calendar(Request $request)
     {
-        $this->syncMeetingStatuses();
+        // $this->syncMeetingStatuses();
         $data = $request->validate([
             'start' => ['required', 'date'],
             'end' => ['required', 'date', 'after:start'],

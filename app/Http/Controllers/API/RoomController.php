@@ -120,7 +120,7 @@ class RoomController extends Controller
 
     public function show(Room $room)
     {
-        $this->syncMeetingStatuses();
+        // $this->syncMeetingStatuses();
 
         $now = now();
 
