@@ -22,12 +22,17 @@ class BookingController extends Controller
 
     private function hasConflict(int $roomId, string $start, string $end, ?int $ignoreId = null): bool
     {
+        $start = Carbon::parse($start)->utc();
+        $end   = Carbon::parse($end)->utc();
+
         return Booking::query()
             ->where('room_id', $roomId)
-            ->whereIn('status', ['pending', 'approved', 'in_meeting', 'cancel_requested'])
+            ->whereIn('status', ['pending', 'approved', 'in_meeting'])
             ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
-            ->where('start_datetime', '<', $end)
-            ->where('end_datetime', '>', $start)
+            ->where(function ($q) use ($start, $end) {
+                $q->where('start_datetime', '<', $end)
+                    ->where('end_datetime', '>', $start);
+            })
             ->exists();
     }
 
@@ -450,15 +455,23 @@ class BookingController extends Controller
         $data['cancel_reason'] = null;
         $data['reject_reason'] = null;
 
+        // 🔥 FIX: normalize time BEFORE checking conflict
+        $start = Carbon::parse($data['start_datetime'])->utc();
+        $end   = Carbon::parse($data['end_datetime'])->utc();
+
         if ($this->hasConflict(
             $data['room_id'],
-            $data['start_datetime'],
-            $data['end_datetime']
+            $start,
+            $end
         )) {
             return response()->json([
                 'message' => 'Room is already booked for this time',
             ], 422);
         }
+
+        // 🔥 FIX: store UTC
+        $data['start_datetime'] = $start;
+        $data['end_datetime'] = $end;
 
         $booking = Booking::create($data)->load(['room', 'user']);
 

@@ -112,13 +112,13 @@ class TelegramService
         $text =
             "🔔 <b>" . e($title) . "</b>\n\n" .
             e($message) . "\n\n" .
-            "🆔 Booking ID: <b>{$booking->id}</b>\n" .
-            "🏢 Room: <b>{$room}</b>\n" .
-            "👤 User: <b>{$user}</b>\n" .
             "📝 Meeting: <b>{$meetingTitle}</b>\n" .
             "👨‍💼 Chairman: <b>{$chairman}</b>\n" .
             "🕒 Start: <b>{$start}</b>\n" .
             "🕓 End: <b>{$end}</b>\n" .
+            "🏢 Room: <b>{$room}</b>\n" .
+            "👤 User: <b>{$user}</b>\n" .
+            "🆔 Booking ID: <b>{$booking->id}</b>\n" .
             "📌 Status: <b>{$status}</b>";
 
         return $this->sendMessage($text);
