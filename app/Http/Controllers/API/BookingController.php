@@ -17,6 +17,7 @@ class BookingController extends Controller
 {
     private function isAdmin(Request $request): bool
     {
+        //update
         $user = $request->user();
 
         if (!$user) return false;
