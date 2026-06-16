@@ -17,7 +17,14 @@ class BookingController extends Controller
 {
     private function isAdmin(Request $request): bool
     {
-        return in_array($request->user()?->level, ['admin', 'super_admin'], true);
+        $user = $request->user();
+
+        if (!$user) return false;
+
+        return in_array(strtolower($user->level ?? ''), [
+            'admin',
+            'super_admin'
+        ]);
     }
 
     private function hasConflict(int $roomId, string $start, string $end, ?int $ignoreId = null): bool
@@ -346,51 +353,52 @@ class BookingController extends Controller
 
     public function availableRooms(Request $request)
     {
-        // $this->syncMeetingStatuses();
-
         $data = $request->validate([
             'start_datetime' => ['required', 'date'],
             'end_datetime' => ['required', 'date', 'after:start_datetime'],
             'ignore_id' => ['nullable', 'integer'],
-
             'participants' => ['nullable', 'integer', 'min:1'],
             'equipment' => ['nullable', 'string'],
         ]);
 
-        $start = Carbon::parse($data['start_datetime'])->toDateTimeString();
-        $end = Carbon::parse($data['end_datetime'])->toDateTimeString();
+        // ✅ FIX TIMEZONE (CRITICAL)
+        $start = Carbon::parse($data['start_datetime'])->utc();
+        $end   = Carbon::parse($data['end_datetime'])->utc();
+
         $ignoreId = $data['ignore_id'] ?? null;
         $participants = (int) ($data['participants'] ?? 0);
 
         $equipmentNames = collect(explode(',', $data['equipment'] ?? ''))
-            ->map(fn($name) => strtolower(trim($name)))
+            ->map(fn($n) => strtolower(trim($n)))
             ->filter()
-            ->reject(fn($name) => $name === 'any')
+            ->reject(fn($n) => $n === 'any')
             ->values();
 
         $rooms = Room::query()
             ->with(['department', 'equipment', 'images'])
-            ->when($participants > 0, function ($query) use ($participants) {
-                $query->where('capacity', '>=', $participants);
-            })
-            ->whereDoesntHave('bookings', function ($query) use ($start, $end, $ignoreId) {
-                $query->whereIn('status', [
-                    'pending',
-                    'approved',
-                    'in_meeting',
-                    'cancel_requested',
-                ])
-                    ->when($ignoreId, function ($query) use ($ignoreId) {
-                        $query->where('id', '!=', $ignoreId);
-                    })
+
+            ->when(
+                $participants > 0,
+                fn($q) =>
+                $q->where('capacity', '>=', $participants)
+            )
+
+            // ✅ FIX CONFLICT CHECK
+            ->whereDoesntHave('bookings', function ($q) use ($start, $end, $ignoreId) {
+                $q->whereIn('status', ['pending', 'approved', 'in_meeting', 'cancel_requested'])
+                    ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
                     ->where('start_datetime', '<', $end)
                     ->where('end_datetime', '>', $start);
             });
 
-        foreach ($equipmentNames as $equipmentName) {
-            $rooms->whereHas('equipment', function ($query) use ($equipmentName) {
-                $query->whereRaw('LOWER(name) = ?', [$equipmentName])
-                    ->orWhereRaw('LOWER(name) LIKE ?', ["%{$equipmentName}%"]);
+        // ✅ FIX EQUIPMENT LOGIC (OR instead of AND)
+        if ($equipmentNames->isNotEmpty()) {
+            $rooms->where(function ($q) use ($equipmentNames) {
+                foreach ($equipmentNames as $name) {
+                    $q->orWhereHas('equipment', function ($query) use ($name) {
+                        $query->whereRaw('LOWER(name) LIKE ?', ["%{$name}%"]);
+                    });
+                }
             });
         }
 
