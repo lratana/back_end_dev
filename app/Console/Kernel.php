@@ -10,9 +10,9 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->call(function () {
-            app(MeetingService::class)->syncMeetingStatuses();
-        })->everyMinute();
+        $schedule->call([MeetingService::class, 'syncMeetingStatuses'])
+            ->everyMinute()
+            ->withoutOverlapping();
     }
 
     protected function commands(): void

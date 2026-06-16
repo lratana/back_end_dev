@@ -55,33 +55,31 @@ class RoomController extends Controller
         return $room;
     }
 
-    private function syncMeetingStatuses(): void
-    {
-        $now = now();
+    // private function syncMeetingStatuses(): void
+    // {
+    //     $now = now();
 
-        // Auto start approved meetings
-        DB::table('bookings')
-            ->where('status', 'approved')
-            ->where('start_datetime', '<=', $now)
-            ->where('end_datetime', '>', $now)
-            ->update([
-                'status' => 'in_meeting',
-                'updated_at' => $now,
-            ]);
+    //     // Auto start approved meetings
+    //     DB::table('bookings')
+    //         ->where('status', 'approved')
+    //         ->where('start_datetime', '<=', $now)
+    //         ->where('end_datetime', '>', $now)
+    //         ->update([
+    //             'status' => 'in_meeting',
+    //             'updated_at' => $now,
+    //         ]);
 
-        // Auto complete ended meetings
-        DB::table('bookings')
-            ->whereIn('status', ['approved', 'in_meeting'])
-            ->where('end_datetime', '<=', $now)
-            ->update([
-                'status' => 'completed',
-                'updated_at' => $now,
-            ]);
-    }
+    //     // Auto complete ended meetings
+    //     DB::table('bookings')
+    //         ->whereIn('status', ['approved', 'in_meeting'])
+    //         ->where('end_datetime', '<=', $now)
+    //         ->update([
+    //             'status' => 'completed',
+    //             'updated_at' => $now,
+    //         ]);
+    // }
     public function index(Request $request)
     {
-        // $this->syncMeetingStatuses();
-
         $q = $request->string('q')->toString();
         $perPage = (int) $request->get('per_page', 10);
         $now = now();
@@ -97,14 +95,11 @@ class RoomController extends Controller
                 'department',
                 'equipment',
                 'images',
+
+                // ✅ FIXED BOOKING FILTER
                 'bookings' => function ($query) use ($now) {
-                    $query->whereIn('status', ['approved', 'in_meeting'])
-                        ->where(function ($q) use ($now) {
-                            $q->where(function ($qq) use ($now) {
-                                $qq->where('start_datetime', '<=', $now)
-                                    ->where('end_datetime', '>', $now);
-                            })->orWhere('start_datetime', '>', $now);
-                        })
+                    $query->whereIn('status', ['pending', 'approved', 'in_meeting'])
+                        ->where('end_datetime', '>=', $now)
                         ->orderBy('start_datetime');
                 },
             ])
@@ -117,25 +112,19 @@ class RoomController extends Controller
 
         return response()->json($rooms);
     }
-
     public function show(Room $room)
     {
-        // $this->syncMeetingStatuses();
-
         $now = now();
 
         $room->load([
             'department',
             'equipment',
             'images',
+
+            // ✅ CLEAN BOOKING RULE
             'bookings' => function ($query) use ($now) {
-                $query->whereIn('status', ['approved', 'in_meeting'])
-                    ->where(function ($q) use ($now) {
-                        $q->where(function ($qq) use ($now) {
-                            $qq->where('start_datetime', '<=', $now)
-                                ->where('end_datetime', '>', $now);
-                        })->orWhere('start_datetime', '>', $now);
-                    })
+                $query->whereIn('status', ['pending', 'approved', 'in_meeting'])
+                    ->where('end_datetime', '>=', $now)
                     ->orderBy('start_datetime');
             },
         ]);
@@ -300,9 +289,9 @@ class RoomController extends Controller
     {
         $now = now();
 
-        // AUTO COMPLETE MEETING
+        // ✅ FIX 1: complete BOTH approved + in_meeting
         DB::table('bookings')
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'in_meeting'])
             ->where('end_datetime', '<=', $now)
             ->update([
                 'status' => 'completed',
@@ -313,13 +302,9 @@ class RoomController extends Controller
             ->with([
                 'department',
                 'bookings' => function ($query) use ($now) {
-                    $query->where('status', 'approved')
-                        ->where(function ($q) use ($now) {
-                            $q->where(function ($qq) use ($now) {
-                                $qq->where('start_datetime', '<=', $now)
-                                    ->where('end_datetime', '>', $now);
-                            })->orWhere('start_datetime', '>', $now);
-                        })
+
+                    $query->whereIn('status', ['pending', 'approved', 'in_meeting'])
+                        ->where('end_datetime', '>=', $now)
                         ->orderBy('start_datetime');
                 },
             ])
@@ -327,8 +312,10 @@ class RoomController extends Controller
             ->get();
 
         $items = $rooms->map(function ($room) use ($now) {
+
             $currentBooking = $room->bookings->first(function ($booking) use ($now) {
-                return $booking->start_datetime <= $now && $booking->end_datetime > $now;
+                return $booking->start_datetime <= $now
+                    && $booking->end_datetime > $now;
             });
 
             $nextBooking = $room->bookings->first(function ($booking) use ($now) {
@@ -346,8 +333,8 @@ class RoomController extends Controller
                     'status' => 'occupied',
 
                     'booking_id' => $currentBooking->id,
-                    'start_datetime' => optional($currentBooking->start_datetime)->toDateTimeString(),
-                    'end_datetime' => optional($currentBooking->end_datetime)->toDateTimeString(),
+                    'start_datetime' => $currentBooking->start_datetime,
+                    'end_datetime' => $currentBooking->end_datetime,
 
                     'meeting_title' => $currentBooking->meeting_title,
                     'meeting_chairman' => $currentBooking->meeting_chairman,
@@ -355,9 +342,10 @@ class RoomController extends Controller
                     'snack_required' => (bool) $currentBooking->snack_required,
                     'snack_note' => $currentBooking->snack_note,
 
-                    'countdown_seconds' => $currentBooking->end_datetime
-                        ? max(0, $now->diffInSeconds($currentBooking->end_datetime, false))
-                        : null,
+                    'countdown_seconds' => max(
+                        0,
+                        $now->diffInSeconds($currentBooking->end_datetime, false)
+                    ),
                 ];
             }
 
@@ -372,8 +360,8 @@ class RoomController extends Controller
                     'status' => 'upcoming',
 
                     'booking_id' => $nextBooking->id,
-                    'start_datetime' => optional($nextBooking->start_datetime)->toDateTimeString(),
-                    'end_datetime' => optional($nextBooking->end_datetime)->toDateTimeString(),
+                    'start_datetime' => $nextBooking->start_datetime,
+                    'end_datetime' => $nextBooking->end_datetime,
 
                     'meeting_title' => $nextBooking->meeting_title,
                     'meeting_chairman' => $nextBooking->meeting_chairman,
@@ -381,9 +369,10 @@ class RoomController extends Controller
                     'snack_required' => (bool) $nextBooking->snack_required,
                     'snack_note' => $nextBooking->snack_note,
 
-                    'countdown_seconds' => $nextBooking->start_datetime
-                        ? max(0, $now->diffInSeconds($nextBooking->start_datetime, false))
-                        : null,
+                    'countdown_seconds' => max(
+                        0,
+                        $now->diffInSeconds($nextBooking->start_datetime, false)
+                    ),
                 ];
             }
 
@@ -408,9 +397,9 @@ class RoomController extends Controller
 
                 'countdown_seconds' => null,
             ];
-        })->values();
+        });
 
-        return response()->json($items);
+        return response()->json($items->values());
     }
 
     public function deleteImage(Room $room, RoomImage $image)

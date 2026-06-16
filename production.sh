@@ -31,6 +31,9 @@ php artisan storage:link
 # Retry failed jobs
 php artisan queue:retry all
 
+# 🚀 ADD THIS (CRITICAL FIX)
+php artisan schedule:work &
+
 # Start services
 apache2-foreground &
 php artisan reverb:start &

@@ -17,12 +17,11 @@ class BookingController extends Controller
 {
     private function isAdmin(Request $request): bool
     {
-        //update
         $user = $request->user();
 
-        if (!$user) return false;
+        if (!$user || !isset($user->level)) return false;
 
-        return in_array(strtolower($user->level ?? ''), [
+        return in_array(strtolower(trim($user->level)), [
             'admin',
             'super_admin'
         ]);
@@ -30,8 +29,8 @@ class BookingController extends Controller
 
     private function hasConflict(int $roomId, string $start, string $end, ?int $ignoreId = null): bool
     {
-        $start = Carbon::parse($start)->utc();
-        $end   = Carbon::parse($end)->utc();
+        $start = Carbon::parse($start);
+        $end   = Carbon::parse($end);
 
         return Booking::query()
             ->where('room_id', $roomId)
@@ -44,29 +43,29 @@ class BookingController extends Controller
             ->exists();
     }
 
-    private function syncMeetingStatuses(): void
-    {
-        $now = now();
-        //
-        // Approved meeting starts automatically
-        Booking::query()
-            ->where('status', 'approved')
-            ->where('start_datetime', '<=', $now)
-            ->where('end_datetime', '>', $now)
-            ->update([
-                'status' => 'in_meeting',
-                'updated_at' => $now,
-            ]);
+    // private function syncMeetingStatuses(): void
+    // {
+    //     $now = now();
+    //     //
+    //     // Approved meeting starts automatically
+    //     Booking::query()
+    //         ->where('status', 'approved')
+    //         ->where('start_datetime', '<=', $now)
+    //         ->where('end_datetime', '>', $now)
+    //         ->update([
+    //             'status' => 'in_meeting',
+    //             'updated_at' => $now,
+    //         ]);
 
-        // Meeting ends automatically
-        Booking::query()
-            ->whereIn('status', ['approved', 'in_meeting'])
-            ->where('end_datetime', '<=', $now)
-            ->update([
-                'status' => 'completed',
-                'updated_at' => $now,
-            ]);
-    }
+    //     // Meeting ends automatically
+    //     Booking::query()
+    //         ->whereIn('status', ['approved', 'in_meeting'])
+    //         ->where('end_datetime', '<=', $now)
+    //         ->update([
+    //             'status' => 'completed',
+    //             'updated_at' => $now,
+    //         ]);
+    // }
     private function isPastBooking(Booking $booking): bool
     {
         return $booking->end_datetime && $booking->end_datetime->isPast();
@@ -335,10 +334,14 @@ class BookingController extends Controller
             'ignore_id' => ['nullable', 'integer', 'exists:bookings,id'],
         ]);
 
+        // ✅ NO Carbon::parse()
+        $start = $data['start_datetime'];
+        $end   = $data['end_datetime'];
+
         $hasConflict = $this->hasConflict(
             $data['room_id'],
-            $data['start_datetime'],
-            $data['end_datetime'],
+            $start->toDateTimeString(),
+            $end->toDateTimeString(),
             $data['ignore_id'] ?? null
         );
 
@@ -362,9 +365,9 @@ class BookingController extends Controller
             'equipment' => ['nullable', 'string'],
         ]);
 
-        // ✅ FIX TIMEZONE (CRITICAL)
-        $start = Carbon::parse($data['start_datetime'])->utc();
-        $end   = Carbon::parse($data['end_datetime'])->utc();
+        // ✅ NO Carbon::parse()
+        $start = $data['start_datetime'];
+        $end   = $data['end_datetime'];
 
         $ignoreId = $data['ignore_id'] ?? null;
         $participants = (int) ($data['participants'] ?? 0);
@@ -422,13 +425,12 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
-        // $this->syncMeetingStatuses();
         $perPage = (int) $request->get('per_page', 10);
         $roomId = $request->integer('room_id');
         $status = $request->string('status')->toString();
 
         $query = Booking::with(['room', 'user'])
-            ->where('end_datetime', '>=', now()) // hide expired
+            ->where('end_datetime', '>=', now())
             ->when($roomId, fn($q) => $q->where('room_id', $roomId))
             ->when($status, fn($q) => $q->where('status', $status));
 
@@ -464,23 +466,27 @@ class BookingController extends Controller
         $data['cancel_reason'] = null;
         $data['reject_reason'] = null;
 
-        // 🔥 FIX: normalize time BEFORE checking conflict
-        $start = Carbon::parse($data['start_datetime'])->utc();
-        $end   = Carbon::parse($data['end_datetime'])->utc();
+        // ✅ FORCE UTC STRING (IMPORTANT FIX)
+        $start = Carbon::parse($data['start_datetime']);
+        $end   = Carbon::parse($data['end_datetime']);
 
+        $startString = $start->toDateTimeString();
+        $endString   = $end->toDateTimeString();
+
+        // 🔥 FIX: conflict check uses STRING (safe)
         if ($this->hasConflict(
             $data['room_id'],
-            $start,
-            $end
+            $startString,
+            $endString
         )) {
             return response()->json([
                 'message' => 'Room is already booked for this time',
             ], 422);
         }
 
-        // 🔥 FIX: store UTC
-        $data['start_datetime'] = $start;
-        $data['end_datetime'] = $end;
+        // 🔥 FIX: store clean UTC strings
+        $data['start_datetime'] = $startString;
+        $data['end_datetime'] = $endString;
 
         $booking = Booking::create($data)->load(['room', 'user']);
 
