@@ -3,7 +3,7 @@ env:
   NGINX_CONFIG: starlink98.cloud
 on:
   push:
-    branches: [addStartAndLeaveMeeting]
+    branches: [UpdateTimeZoneToUTC]
 
 jobs:
   deploy:
