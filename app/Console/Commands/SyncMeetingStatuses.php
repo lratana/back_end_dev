@@ -2,26 +2,17 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Services\MeetingService;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class SyncMeetingStatuses extends Command
 {
-    /**
-     * Command signature
-     */
     protected $signature = 'meetings:sync';
 
-    /**
-     * Command description
-     */
     protected $description = 'Sync meeting statuses: approved → in_meeting → completed';
 
-    /**
-     * Execute the console command
-     */
     public function handle(): int
     {
         $startTime = microtime(true);
@@ -29,19 +20,25 @@ class SyncMeetingStatuses extends Command
         try {
             Log::info('[MeetingSync] Started');
 
-            app(MeetingService::class)->syncMeetingStatuses();
+            $result = app(MeetingService::class)->syncMeetingStatuses();
 
             $duration = round(microtime(true) - $startTime, 3);
 
             Log::info('[MeetingSync] Completed', [
+                'now_utc' => $result['now'],
+                'started_count' => $result['started'],
+                'completed_count' => $result['completed'],
                 'duration_seconds' => $duration,
             ]);
 
-            $this->info("Meeting sync completed successfully in {$duration}s");
+            $this->info('Meeting sync completed successfully.');
+            $this->line('Now UTC: ' . $result['now']);
+            $this->line('Started: ' . $result['started']);
+            $this->line('Completed: ' . $result['completed']);
+            $this->line("Duration: {$duration}s");
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-
             Log::error('[MeetingSync] Failed', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),

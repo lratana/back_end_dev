@@ -8,6 +8,7 @@ use App\Http\Requests\Booking\UpdateRoomRequest;
 use App\Models\Equipment;
 use App\Models\Room;
 use App\Models\RoomImage;
+use App\Services\MeetingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,9 +18,42 @@ class RoomController extends Controller
 
     private function applyCurrentStatusToRoom(Room $room, $now): Room
     {
-        $currentBooking = $room->bookings->first(function ($booking) use ($now) {
-            return $booking->start_datetime <= $now &&
-                $booking->end_datetime > $now;
+        // ✅ Normalize $now to UTC datetime string
+        // Expected format: 2026-06-17 08:42:00
+        $nowValue = $now instanceof \DateTimeInterface
+            ? $now->format('Y-m-d H:i:s')
+            : (string) $now;
+
+        $formatDateTime = function ($value): ?string {
+            if ($value === null) {
+                return null;
+            }
+
+            if ($value instanceof \DateTimeInterface) {
+                return $value->format('Y-m-d H:i:s');
+            }
+
+            return (string) $value;
+        };
+
+        $currentBooking = $room->bookings->first(function ($booking) use ($nowValue, $formatDateTime) {
+            $start = $formatDateTime($booking->start_datetime);
+            $end = $formatDateTime($booking->end_datetime);
+
+            if ($start === null || $end === null) {
+                return false;
+            }
+
+            $status = strtolower(trim((string) $booking->status));
+
+            // ✅ Only active/current booking statuses can make room in_meeting
+            if (!in_array($status, ['approved', 'in_meeting'], true)) {
+                return false;
+            }
+
+            // ✅ Current meeting check
+            // start <= now < end
+            return $start <= $nowValue && $end > $nowValue;
         });
 
         if ($currentBooking) {
@@ -33,8 +67,8 @@ class RoomController extends Controller
             $room->current_booking_id = $currentBooking->id;
             $room->current_meeting_title = $currentBooking->meeting_title;
             $room->current_meeting_chairman = $currentBooking->meeting_chairman;
-            $room->current_start_datetime = optional($currentBooking->start_datetime)->toDateTimeString();
-            $room->current_end_datetime = optional($currentBooking->end_datetime)->toDateTimeString();
+            $room->current_start_datetime = $formatDateTime($currentBooking->start_datetime);
+            $room->current_end_datetime = $formatDateTime($currentBooking->end_datetime);
         } else {
             $room->current_status = 'available';
             $room->status = 'available';
@@ -80,9 +114,14 @@ class RoomController extends Controller
     // }
     public function index(Request $request)
     {
+        // approved → in_meeting → completed
+        app(MeetingService::class)->syncMeetingStatuses();
         $q = $request->string('q')->toString();
         $perPage = (int) $request->get('per_page', 10);
-        $now = now();
+
+        // ✅ DB stores UTC, so compare with UTC
+        // Format: 2026-06-17 08:42:00
+        $now = now('UTC')->format('Y-m-d H:i:s');
 
         $rooms = Room::query()
             ->when($q, function ($query) use ($q) {
@@ -96,9 +135,16 @@ class RoomController extends Controller
                 'equipment',
                 'images',
 
-                // ✅ FIXED BOOKING FILTER
+                // ✅ Load current/future active bookings only
                 'bookings' => function ($query) use ($now) {
-                    $query->whereIn('status', ['pending', 'approved', 'in_meeting'])
+                    $query->whereIn('status', [
+                        'pending',
+                        'approved',
+                        'in_meeting',
+                        'cancel_requested',
+                    ])
+                        ->whereNotNull('start_datetime')
+                        ->whereNotNull('end_datetime')
                         ->where('end_datetime', '>=', $now)
                         ->orderBy('start_datetime');
                 },
@@ -114,16 +160,27 @@ class RoomController extends Controller
     }
     public function show(Room $room)
     {
-        $now = now();
+        // approved → in_meeting → completed
+        app(MeetingService::class)->syncMeetingStatuses();
+        // ✅ DB stores UTC, so compare with UTC
+        // Format: 2026-06-17 08:42:00
+        $now = now('UTC')->format('Y-m-d H:i:s');
 
         $room->load([
             'department',
             'equipment',
             'images',
 
-            // ✅ CLEAN BOOKING RULE
+            // ✅ Load current/future active bookings only
             'bookings' => function ($query) use ($now) {
-                $query->whereIn('status', ['pending', 'approved', 'in_meeting'])
+                $query->whereIn('status', [
+                    'pending',
+                    'approved',
+                    'in_meeting',
+                    'cancel_requested',
+                ])
+                    ->whereNotNull('start_datetime')
+                    ->whereNotNull('end_datetime')
                     ->where('end_datetime', '>=', $now)
                     ->orderBy('start_datetime');
             },

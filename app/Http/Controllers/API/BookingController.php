@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
-use App\Services\TelegramService;
+
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Booking\StoreBookingRequest;
 use App\Http\Requests\Booking\UpdateBookingRequest;
@@ -10,6 +10,8 @@ use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
 use App\Notifications\BookingStatusNotification;
+use App\Services\MeetingService;
+use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -329,19 +331,20 @@ class BookingController extends Controller
     {
         $data = $request->validate([
             'room_id' => ['required', 'integer', 'exists:rooms,id'],
-            'start_datetime' => ['required', 'date'],
-            'end_datetime' => ['required', 'date', 'after:start_datetime'],
+            'start_datetime' => ['required', 'date_format:Y-m-d H:i:s'],
+            'end_datetime' => ['required', 'date_format:Y-m-d H:i:s', 'after:start_datetime'],
             'ignore_id' => ['nullable', 'integer', 'exists:bookings,id'],
         ]);
 
         // ✅ NO Carbon::parse()
+        // ✅ Frontend already sends UTC: Y-m-d H:i:s
         $start = $data['start_datetime'];
-        $end   = $data['end_datetime'];
+        $end = $data['end_datetime'];
 
         $hasConflict = $this->hasConflict(
             $data['room_id'],
-            $start->toDateTimeString(),
-            $end->toDateTimeString(),
+            $start,
+            $end,
             $data['ignore_id'] ?? null
         );
 
@@ -352,55 +355,67 @@ class BookingController extends Controller
             'message' => $hasConflict
                 ? 'Room is already booked for this time'
                 : 'Room is available',
+            'debug' => [
+                'start_datetime' => $start,
+                'end_datetime' => $end,
+            ],
         ]);
     }
 
     public function availableRooms(Request $request)
     {
         $data = $request->validate([
-            'start_datetime' => ['required', 'date'],
-            'end_datetime' => ['required', 'date', 'after:start_datetime'],
+            'start_datetime' => ['required', 'date_format:Y-m-d H:i:s'],
+            'end_datetime' => ['required', 'date_format:Y-m-d H:i:s', 'after:start_datetime'],
             'ignore_id' => ['nullable', 'integer'],
             'participants' => ['nullable', 'integer', 'min:1'],
             'equipment' => ['nullable', 'string'],
         ]);
 
         // ✅ NO Carbon::parse()
+        // ✅ Frontend already sends UTC: Y-m-d H:i:s
         $start = $data['start_datetime'];
-        $end   = $data['end_datetime'];
+        $end = $data['end_datetime'];
 
         $ignoreId = $data['ignore_id'] ?? null;
         $participants = (int) ($data['participants'] ?? 0);
 
         $equipmentNames = collect(explode(',', $data['equipment'] ?? ''))
-            ->map(fn($n) => strtolower(trim($n)))
+            ->map(fn($name) => strtolower(trim($name)))
             ->filter()
-            ->reject(fn($n) => $n === 'any')
+            ->reject(fn($name) => $name === 'any')
             ->values();
 
         $rooms = Room::query()
             ->with(['department', 'equipment', 'images'])
-
             ->when(
                 $participants > 0,
-                fn($q) =>
-                $q->where('capacity', '>=', $participants)
+                fn($query) => $query->where('capacity', '>=', $participants)
             )
-
-            // ✅ FIX CONFLICT CHECK
-            ->whereDoesntHave('bookings', function ($q) use ($start, $end, $ignoreId) {
-                $q->whereIn('status', ['pending', 'approved', 'in_meeting', 'cancel_requested'])
-                    ->when($ignoreId, fn($q) => $q->where('id', '!=', $ignoreId))
+            ->whereDoesntHave('bookings', function ($query) use ($start, $end, $ignoreId) {
+                $query->whereIn('status', [
+                    'pending',
+                    'approved',
+                    'in_meeting',
+                    'cancel_requested',
+                ])
+                    ->when(
+                        $ignoreId,
+                        fn($query) => $query->where('id', '!=', $ignoreId)
+                    )
+                    // ✅ Correct overlap check
+                    // existing_start < requested_end
+                    // existing_end > requested_start
                     ->where('start_datetime', '<', $end)
                     ->where('end_datetime', '>', $start);
             });
 
-        // ✅ FIX EQUIPMENT LOGIC (OR instead of AND)
+        // ✅ Equipment logic: OR match
         if ($equipmentNames->isNotEmpty()) {
-            $rooms->where(function ($q) use ($equipmentNames) {
+            $rooms->where(function ($query) use ($equipmentNames) {
                 foreach ($equipmentNames as $name) {
-                    $q->orWhereHas('equipment', function ($query) use ($name) {
-                        $query->whereRaw('LOWER(name) LIKE ?', ["%{$name}%"]);
+                    $query->orWhereHas('equipment', function ($equipmentQuery) use ($name) {
+                        $equipmentQuery->whereRaw('LOWER(name) LIKE ?', ["%{$name}%"]);
                     });
                 }
             });
@@ -414,7 +429,7 @@ class BookingController extends Controller
                 'start_datetime' => $start,
                 'end_datetime' => $end,
                 'participants' => $participants,
-                'equipment' => $equipmentNames,
+                'equipment' => $equipmentNames->all(),
                 'room_count' => $rooms->count(),
             ],
             'message' => $rooms->count()
@@ -425,28 +440,62 @@ class BookingController extends Controller
 
     public function index(Request $request)
     {
+        // ✅ Sync booking statuses before returning booking list
+        // approved → in_meeting → completed
+        app(MeetingService::class)->syncMeetingStatuses();
+
         $perPage = (int) $request->get('per_page', 10);
         $roomId = $request->integer('room_id');
         $status = $request->string('status')->toString();
 
+        // ✅ DB stores UTC, so compare with UTC
+        $now = now('UTC')->format('Y-m-d H:i:s');
+
         $query = Booking::with(['room', 'user'])
-            ->where('end_datetime', '>=', now())
-            ->when($roomId, fn($q) => $q->where('room_id', $roomId))
-            ->when($status, fn($q) => $q->where('status', $status));
+            ->whereNotNull('start_datetime')
+            ->whereNotNull('end_datetime')
+            ->where('end_datetime', '>=', $now)
+            ->when($roomId, function ($query) use ($roomId) {
+                $query->where('room_id', $roomId);
+            })
+            ->when($status, function ($query) use ($status) {
+                $query->where('status', $status);
+            });
 
-        if (!$this->isAdmin($request)) $query->where('user_id', $request->user()->id);
+        if (!$this->isAdmin($request)) {
+            $query->where('user_id', $request->user()->id);
+        }
 
-        return response()->json($query->orderBy('start_datetime', 'asc')->paginate($perPage));
+        return response()->json(
+            $query->orderBy('start_datetime', 'asc')->paginate($perPage)
+        );
     }
 
     public function show(Request $request, Booking $booking)
     {
+        // ✅ Sync status before showing single booking
+        app(MeetingService::class)->syncMeetingStatuses();
+
+        // ✅ Refresh because sync may update this booking status
+        $booking->refresh();
+
         if (!$this->isAdmin($request) && $booking->user_id !== $request->user()->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        return response()->json($booking->load(['room', 'user']));
+        return response()->json(
+            $booking->load(['room', 'user'])
+        );
     }
+
+    // public function show(Request $request, Booking $booking)
+    // {
+    //     if (!$this->isAdmin($request) && $booking->user_id !== $request->user()->id) {
+    //         return response()->json(['message' => 'Unauthorized'], 403);
+    //     }
+
+    //     return response()->json($booking->load(['room', 'user']));
+    // }
 
     public function store(StoreBookingRequest $request)
     {
@@ -500,6 +549,8 @@ class BookingController extends Controller
     }
     public function addExtraTime(Request $request, Booking $booking)
     {
+        app(MeetingService::class)->syncMeetingStatuses();
+        $booking->refresh();
         $user = $request->user();
 
         if (!$user || $booking->user_id !== $user->id) {
@@ -507,13 +558,6 @@ class BookingController extends Controller
                 'message' => 'Unauthorized',
                 'can_extend' => false,
             ], 403);
-        }
-
-        if (!in_array($booking->status, ['approved', 'in_meeting'], true)) {
-            return response()->json([
-                'message' => 'Only approved or running meetings can be extended',
-                'can_extend' => false,
-            ], 422);
         }
 
         if (($booking->recurrence_type ?? 'none') !== 'none') {
@@ -527,12 +571,61 @@ class BookingController extends Controller
             'extra_hours' => ['required', 'integer', 'min:1', 'max:4'],
         ]);
 
-        $now = now();
-        $meetingStart = $booking->start_datetime->copy();
-        $oldEnd = $booking->end_datetime->copy();
+        // ✅ Always use UTC because DB stores UTC
+        $now = now('UTC');
+
+        $meetingStart = $booking->start_datetime;
+        $oldEnd = $booking->end_datetime;
+
+        if (!$meetingStart || !$oldEnd) {
+            return response()->json([
+                'message' => 'Booking start or end time is missing',
+                'can_extend' => false,
+            ], 422);
+        }
+
+        // ✅ Force UTC for comparison
+        $meetingStart = $meetingStart->copy()->timezone('UTC');
+        $oldEnd = $oldEnd->copy()->timezone('UTC');
+
+        $status = strtolower(trim((string) $booking->status));
 
         /*
-     * Check current meeting:
+     * ✅ Auto-start fallback:
+     * If scheduler did not change approved → in_meeting,
+     * but now is already inside meeting time,
+     * change it here immediately.
+     */
+        if (
+            $status === 'approved' &&
+            $meetingStart->lte($now) &&
+            $oldEnd->gt($now)
+        ) {
+            $booking->status = 'in_meeting';
+
+
+            $booking->save();
+            $booking->refresh();
+
+            $status = 'in_meeting';
+            $meetingStart = $booking->start_datetime->copy()->timezone('UTC');
+            $oldEnd = $booking->end_datetime->copy()->timezone('UTC');
+        }
+
+        if (!in_array($status, ['in_meeting'], true)) {
+            return response()->json([
+                'message' => 'Cannot add extra time because the meeting has not started yet.',
+                'can_extend' => false,
+                'debug' => [
+                    'status' => $status,
+                    'now_utc' => $now->format('Y-m-d H:i:s'),
+                    'start_datetime' => $meetingStart->format('Y-m-d H:i:s'),
+                    'end_datetime' => $oldEnd->format('Y-m-d H:i:s'),
+                ],
+            ], 422);
+        }
+
+        /*
      * Meeting can be extended only if:
      * start_datetime <= now < end_datetime
      */
@@ -540,6 +633,12 @@ class BookingController extends Controller
             return response()->json([
                 'message' => 'This meeting has not started yet',
                 'can_extend' => false,
+                'debug' => [
+                    'now_utc' => $now->format('Y-m-d H:i:s'),
+                    'meeting_start_utc' => $meetingStart->format('Y-m-d H:i:s'),
+                    'meeting_end_utc' => $oldEnd->format('Y-m-d H:i:s'),
+                    'status' => $booking->status,
+                ],
             ], 422);
         }
 
@@ -547,6 +646,10 @@ class BookingController extends Controller
             return response()->json([
                 'message' => 'This meeting has already ended and cannot be extended',
                 'can_extend' => false,
+                'debug' => [
+                    'now_utc' => $now->format('Y-m-d H:i:s'),
+                    'end_datetime' => $oldEnd->format('Y-m-d H:i:s'),
+                ],
             ], 422);
         }
 
@@ -559,8 +662,8 @@ class BookingController extends Controller
      */
         if ($this->hasConflict(
             $booking->room_id,
-            $oldEnd->toDateTimeString(),
-            $newEnd->toDateTimeString(),
+            $oldEnd->format('Y-m-d H:i:s'),
+            $newEnd->format('Y-m-d H:i:s'),
             $booking->id
         )) {
             return response()->json([
@@ -568,16 +671,19 @@ class BookingController extends Controller
                 'can_extend' => false,
                 'extension' => [
                     'extra_hours' => $extraHours,
-                    'old_end_datetime' => $oldEnd->toDateTimeString(),
-                    'requested_new_end_datetime' => $newEnd->toDateTimeString(),
+                    'old_end_datetime' => $oldEnd->format('Y-m-d H:i:s'),
+                    'requested_new_end_datetime' => $newEnd->format('Y-m-d H:i:s'),
                 ],
             ], 422);
         }
 
         $booking->update([
-            'end_datetime' => $newEnd,
+            'end_datetime' => $newEnd->format('Y-m-d H:i:s'),
+            'status' => 'in_meeting',
+            'updated_at' => $now->format('Y-m-d H:i:s'),
         ]);
 
+        $booking->refresh();
         $booking->load(['room', 'user']);
 
         $this->notifyAdmins(
@@ -592,10 +698,16 @@ class BookingController extends Controller
             'data' => $booking,
             'extension' => [
                 'extra_hours' => $extraHours,
-                'old_end_datetime' => $oldEnd->toDateTimeString(),
-                'new_end_datetime' => $newEnd->toDateTimeString(),
+                'old_end_datetime' => $oldEnd->format('Y-m-d H:i:s'),
+                'new_end_datetime' => $newEnd->format('Y-m-d H:i:s'),
                 'status' => $booking->status,
                 'requires_approval' => false,
+            ],
+            'debug' => [
+                'now_utc' => $now->format('Y-m-d H:i:s'),
+                'start_datetime' => $meetingStart->format('Y-m-d H:i:s'),
+                'old_end_datetime' => $oldEnd->format('Y-m-d H:i:s'),
+                'new_end_datetime' => $newEnd->format('Y-m-d H:i:s'),
             ],
         ]);
     }
