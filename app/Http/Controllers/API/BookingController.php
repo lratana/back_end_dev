@@ -14,6 +14,8 @@ use App\Services\MeetingService;
 use App\Services\TelegramService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
 
 class BookingController extends Controller
 {
@@ -410,16 +412,41 @@ class BookingController extends Controller
                     ->where('end_datetime', '>', $start);
             });
 
-        // ✅ Equipment logic: OR match
+
+        // ✅ Equipment logic: OR + fuzzy match
         if ($equipmentNames->isNotEmpty()) {
-            $rooms->where(function ($query) use ($equipmentNames) {
+            $equipmentAliases = [
+                'lcd projector' => ['lcd', 'projector', 'screen', 'display'],
+                'video conference' => ['video', 'conference', 'camera', 'webcam'],
+                'microphone' => ['microphone', 'mic'],
+                'speaker sound' => ['speaker', 'sound', 'audio'],
+                'whiteboard' => ['whiteboard', 'board'],
+                'vip' => ['vip'],
+            ];
+
+            $rooms->where(function ($query) use ($equipmentNames, $equipmentAliases) {
                 foreach ($equipmentNames as $name) {
-                    $query->orWhereHas('equipment', function ($equipmentQuery) use ($name) {
-                        $equipmentQuery->whereRaw('LOWER(name) LIKE ?', ["%{$name}%"]);
-                    });
+                    $keywords = $equipmentAliases[$name] ?? preg_split('/\s+/', $name);
+
+                    $keywords = collect($keywords)
+                        ->map(fn($keyword) => Str::of($keyword)->lower()->trim()->toString())
+                        ->filter(fn($keyword) => strlen($keyword) >= 2)
+                        ->unique()
+                        ->values();
+
+                    foreach ($keywords as $keyword) {
+                        $query->orWhereHas('equipment', function ($equipmentQuery) use ($keyword) {
+                            $equipmentQuery->whereRaw(
+                                'LOWER(name) LIKE ?',
+                                ['%' . $keyword . '%']
+                            );
+                        });
+                    }
                 }
             });
         }
+
+
 
         $rooms = $rooms->get();
 
