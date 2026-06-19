@@ -53,6 +53,7 @@ class TelegramService
         }
     }
 
+
     private function formatBookingLocalTime(?string $value): string
     {
         if (!$value) {
@@ -60,17 +61,16 @@ class TelegramService
         }
 
         /*
-         * Booking datetime is Cambodia local time.
-         *
-         * Example DB value:
-         * 2026-06-09 10:00:00
-         *
-         * Meaning:
-         * 10:00 AM Cambodia time.
-         *
-         * Do NOT call ->timezone('Asia/Phnom_Penh') here,
-         * because that will add +7 hours if Laravel treats it as UTC.
-         */
+     * Database stores booking datetime in UTC.
+     *
+     * Example DB value:
+     * 2026-06-15 11:00:00
+     *
+     * UTC:             11:00 AM
+     * Asia/Phnom_Penh:  6:00 PM
+     *
+     * Telegram is a display layer, so convert UTC to Cambodia time here.
+     */
         $text = str_replace('T', ' ', trim($value));
         $text = substr($text, 0, 19);
 
@@ -78,8 +78,10 @@ class TelegramService
             return Carbon::createFromFormat(
                 'Y-m-d H:i:s',
                 $text,
-                'Asia/Phnom_Penh'
-            )->format('d M Y, h:i A');
+                'UTC',
+            )
+                ->setTimezone('Asia/Phnom_Penh')
+                ->format('d M Y, h:i A');
         } catch (\Throwable $e) {
             Log::warning('Invalid booking datetime for Telegram alert', [
                 'value' => $value,
@@ -89,6 +91,8 @@ class TelegramService
             return '-';
         }
     }
+
+
 
     public function sendBookingAlert(Booking $booking, string $title, string $message): bool
     {
