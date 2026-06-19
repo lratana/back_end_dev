@@ -2,14 +2,12 @@
     <div class="content-wrapper">
         <section class="content">
             <div class="container-fluid">
-
                 <div v-if="error" class="alert alert-danger">
                     {{ error }}
                 </div>
 
                 <div class="card">
                     <div class="card-body">
-
                         <div class="calendar-legend mb-3">
                             <div class="legend-item">
                                 <span class="legend-color pending"></span>
@@ -18,6 +16,10 @@
                             <div class="legend-item">
                                 <span class="legend-color approved"></span>
                                 Approved
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color in_meeting"></span>
+                                In Meeting
                             </div>
                             <div class="legend-item">
                                 <span class="legend-color rejected"></span>
@@ -40,7 +42,7 @@
                                 Expired
                             </div>
 
-                            <div class="ml-auto d-flex align-items-center" style="gap:10px;">
+                            <div class="ml-auto d-flex align-items-center" style="gap: 10px">
                                 <button class="btn btn-sm btn-outline-primary" :disabled="loading" @click="refetch">
                                     <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
                                     Reload
@@ -51,10 +53,8 @@
                         <div class="gc-wrap">
                             <FullCalendar ref="calendarRef" :options="calendarOptions" />
                         </div>
-
                     </div>
                 </div>
-
             </div>
         </section>
     </div>
@@ -62,7 +62,6 @@
     <div class="modal fade" ref="detailModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-md" role="document">
             <div class="modal-content">
-
                 <div class="modal-header">
                     <h5 class="modal-title">Booking Detail</h5>
                     <button type="button" class="close" @click="hideModal">
@@ -78,16 +77,14 @@
                     <div v-else-if="selected">
                         <div class="mb-2">
                             <strong>Room:</strong>
-                            {{ selected.room?.name ?? ("Room #" + selected.room_id) }}
+                            {{ selected.room?.name ?? "Room #" + selected.room_id }}
                         </div>
 
                         <div class="mb-2">
                             <strong>Start:</strong> {{ fmt(selected.start_datetime) }}
                         </div>
 
-                        <div class="mb-2">
-                            <strong>End:</strong> {{ fmt(selected.end_datetime) }}
-                        </div>
+                        <div class="mb-2"><strong>End:</strong> {{ fmt(selected.end_datetime) }}</div>
 
                         <div class="mb-2">
                             <strong>Status:</strong>
@@ -105,15 +102,14 @@
                         </div>
                     </div>
 
-                    <div v-else class="text-muted">
-                        No data
-                    </div>
+                    <div v-else class="text-muted">No data</div>
                 </div>
 
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" @click="hideModal">Close</button>
+                    <button class="btn btn-secondary" type="button" @click="hideModal">
+                        Close
+                    </button>
                 </div>
-
             </div>
         </div>
     </div>
@@ -172,6 +168,8 @@ function statusBadge(status) {
             return "badge-warning";
         case "approved":
             return "badge-success";
+        case "in_meeting":
+            return "badge-danger";
         case "rejected":
             return "badge-danger";
         case "cancel_requested":
@@ -188,6 +186,7 @@ function statusBadge(status) {
 function statusClass(status) {
     if (status === "pending") return "ev-pending";
     if (status === "approved") return "ev-approved";
+    if (status === "in_meeting") return "ev-in_meeting";
     if (status === "rejected") return "ev-rejected";
     if (status === "cancel_requested") return "ev-cancel-requested";
     if (status === "cancelled") return "ev-cancelled";
@@ -217,10 +216,9 @@ async function fetchEvents(info, successCallback, failureCallback) {
             start: normalizeDt(b.start_datetime),
             end: normalizeDt(b.end_datetime),
             extendedProps: { booking: b },
-            classNames: [
-                statusClass(b.status),
-                isPastBooking(b) ? "ev-expired" : "",
-            ].filter(Boolean),
+            classNames: [statusClass(b.status), isPastBooking(b) ? "ev-expired" : ""].filter(
+                Boolean
+            ),
         }));
 
         successCallback(events);
@@ -309,6 +307,10 @@ const calendarOptions = {
     background: #28a745;
 }
 
+.legend-color.in_meeting {
+    background: #ff6978;
+}
+
 .legend-color.rejected {
     background: #dc3545;
 }
@@ -355,6 +357,11 @@ const calendarOptions = {
 
 :deep(.ev-approved) {
     background: #28a745 !important;
+    color: #fff !important;
+}
+
+:deep(.ev-in_meeting) {
+    background: #ff6978 !important;
     color: #fff !important;
 }
 

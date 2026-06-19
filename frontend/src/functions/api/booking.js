@@ -45,3 +45,8 @@ export async function apiCheckBookingAvailability(params = {}) {
 export async function apiGetAvailableRooms(params = {}) {
     return await window.axios.get(`${window.API_URL}/bookings/available-rooms`, { params });
 }
+
+export function apiAddExtraTime(id, payload) {
+    return axios.put(`${window.API_URL}/bookings/extend-time/${id}`, payload);
+}
+

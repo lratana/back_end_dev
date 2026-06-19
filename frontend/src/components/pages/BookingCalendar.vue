@@ -25,6 +25,9 @@
                                     <span class="legend-color approved"></span>{{ $t("approved") }}
                                 </div>
                                 <div class="legend-item">
+                                    <span class="legend-color in_meeting"></span>{{ $t("in_meeting") }}
+                                </div>
+                                <div class="legend-item">
                                     <span class="legend-color rejected"></span>{{ $t("rejected") }}
                                 </div>
                                 <div class="legend-item">
@@ -627,6 +630,8 @@ function statusBadge(status) {
             return "badge-warning";
         case "approved":
             return "badge-success";
+        case "in_meeting":
+            return "badge-danger";
         case "rejected":
             return "badge-danger";
         case "cancel_requested":
@@ -643,6 +648,7 @@ function statusBadge(status) {
 function statusClass(status) {
     if (status === "pending") return "fc-event-pending";
     if (status === "approved") return "fc-event-approved";
+    if (status === "in_meeting") return "fc-event-in_meeting";
     if (status === "rejected") return "fc-event-rejected";
     if (status === "cancel_requested") return "fc-event-cancel-requested";
     if (status === "cancelled") return "fc-event-cancelled";
@@ -656,6 +662,8 @@ function statusHelpText(status) {
             return "Waiting for admin review";
         case "approved":
             return "Approved and active";
+        case "in_meeting":
+            return "In Meeting and active";
         case "rejected":
             return "Rejected by admin";
         case "cancel_requested":
@@ -1539,6 +1547,10 @@ const calendarOptions = {
     background: #28a745;
 }
 
+.legend-color.in_meeting {
+    background: #ff6978;
+}
+
 .legend-color.rejected {
     background: #dc3545;
 }
@@ -1579,6 +1591,11 @@ const calendarOptions = {
 
 :deep(.fc-event-approved) {
     background: #28a745 !important;
+    color: #fff !important;
+}
+
+:deep(.fc-event-in_meeting) {
+    background: #ff6978 !important;
     color: #fff !important;
 }
 

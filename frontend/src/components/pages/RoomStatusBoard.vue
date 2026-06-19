@@ -1,5 +1,5 @@
 <template>
-    <div class="content-wrapper tv-wrapper">
+    <div ref="tvWrapper" class="content-wrapper tv-wrapper" :class="{ 'display-mode': isDisplayMode }">
         <section class="content-header p-0">
             <div class="container-fluid p-0">
                 <div class="tv-dashboard">
@@ -14,10 +14,24 @@
                             <p>{{ nowText }}</p>
                         </div>
 
-                        <button class="btn btn-light btn-sm refresh-btn" @click="loadBoard" :disabled="loading">
-                            <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': loading }"></i>
-                            Refresh
-                        </button>
+                        <div class="tv-actions">
+                            <button v-if="!isDisplayMode" class="btn btn-outline-light btn-sm refresh-btn" type="button"
+                                @click="openOnSecondScreen">
+                                <i class="fas fa-external-link-alt mr-1"></i>
+                                Open Display
+                            </button>
+
+                            <button class="btn btn-light btn-sm refresh-btn" type="button" @click="toggleFullscreen">
+                                <i class="mr-1" :class="isFullscreen ? 'fas fa-compress' : 'fas fa-expand'"></i>
+                                {{ isFullscreen ? "Exit Fullscreen" : "Fullscreen" }}
+                            </button>
+
+                            <button class="btn btn-light btn-sm refresh-btn" type="button" @click="loadBoard"
+                                :disabled="loading">
+                                <i class="fas fa-sync-alt mr-1" :class="{ 'fa-spin': loading }"></i>
+                                Refresh
+                            </button>
+                        </div>
                     </div>
 
                     <div v-if="error" class="alert alert-danger mx-3 mt-3">
@@ -167,9 +181,7 @@
                                             <i class="fas fa-bolt"></i>
                                             <span>Status</span>
                                         </div>
-                                        <div class="countdown-text small-text">
-                                            Ready for booking
-                                        </div>
+                                        <div class="countdown-text small-text">Ready for booking</div>
                                     </div>
                                 </template>
                             </div>
@@ -190,11 +202,34 @@ const loading = ref(false);
 const error = ref("");
 const now = ref(new Date());
 
+const BOOKING_TIME_ZONE = "Asia/Phnom_Penh";
+
+const tvWrapper = ref(null);
+const isFullscreen = ref(false);
+
+const isDisplayMode = computed(() => {
+    return new URLSearchParams(window.location.search).get("display") === "1";
+});
+
 let refreshTimer = null;
 let clockTimer = null;
 
+// const nowText = computed(() =>
+//     now.value.toLocaleString([], {
+//         year: "numeric",
+//         month: "short",
+//         day: "numeric",
+//         weekday: "long",
+//         hour: "2-digit",
+//         minute: "2-digit",
+//         second: "2-digit",
+//         hour12: false,
+//     })
+// );
+
 const nowText = computed(() =>
-    now.value.toLocaleString([], {
+    now.value.toLocaleString("en-US", {
+        timeZone: BOOKING_TIME_ZONE,
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -207,48 +242,66 @@ const nowText = computed(() =>
 );
 
 function normalizeDt(dt) {
-    return dt ? String(dt).replace(" ", "T") : null;
+    if (!dt) return null;
+
+    let text = String(dt).trim().replace(" ", "T");
+
+    if (text.length === 16) {
+        text += ":00";
+    }
+
+    const hasTimezone = /Z$/i.test(text) || /[+-]\d{2}:?\d{2}$/.test(text);
+
+    // Booking API datetime without timezone is UTC.
+    if (!hasTimezone) {
+        text = `${text.slice(0, 19)}Z`;
+    }
+
+    return text;
+}
+
+function cambodiaDateKey(date) {
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: BOOKING_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(date);
 }
 
 function fmt(dt) {
     if (!dt) return "-";
 
     const d = new Date(normalizeDt(dt));
-    if (Number.isNaN(d.getTime())) return String(dt);
 
-    const nowDate = new Date();
+    if (Number.isNaN(d.getTime())) {
+        return String(dt);
+    }
 
-    const startOfToday = new Date(
-        nowDate.getFullYear(),
-        nowDate.getMonth(),
-        nowDate.getDate()
-    );
-    const startOfTomorrow = new Date(
-        nowDate.getFullYear(),
-        nowDate.getMonth(),
-        nowDate.getDate() + 1
-    );
-    const startOfDayAfterTomorrow = new Date(
-        nowDate.getFullYear(),
-        nowDate.getMonth(),
-        nowDate.getDate() + 2
-    );
+    const today = new Date();
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
-    const timeText = d.toLocaleTimeString([], {
+    const bookingDateKey = cambodiaDateKey(d);
+    const todayKey = cambodiaDateKey(today);
+    const tomorrowKey = cambodiaDateKey(tomorrow);
+
+    const timeText = d.toLocaleTimeString("en-US", {
+        timeZone: BOOKING_TIME_ZONE,
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
     });
 
-    if (d >= startOfToday && d < startOfTomorrow) {
+    if (bookingDateKey === todayKey) {
         return `Today • ${timeText}`;
     }
 
-    if (d >= startOfTomorrow && d < startOfDayAfterTomorrow) {
+    if (bookingDateKey === tomorrowKey) {
         return `Tomorrow • ${timeText}`;
     }
 
-    const dateText = d.toLocaleDateString([], {
+    const dateText = d.toLocaleDateString("en-US", {
+        timeZone: BOOKING_TIME_ZONE,
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -256,6 +309,57 @@ function fmt(dt) {
 
     return `${dateText} • ${timeText}`;
 }
+
+// function normalizeDt(dt) {
+//     return dt ? String(dt).replace(" ", "T") : null;
+// }
+
+// function fmt(dt) {
+//     if (!dt) return "-";
+
+//     const d = new Date(normalizeDt(dt));
+//     if (Number.isNaN(d.getTime())) return String(dt);
+
+//     const nowDate = new Date();
+
+//     const startOfToday = new Date(
+//         nowDate.getFullYear(),
+//         nowDate.getMonth(),
+//         nowDate.getDate()
+//     );
+//     const startOfTomorrow = new Date(
+//         nowDate.getFullYear(),
+//         nowDate.getMonth(),
+//         nowDate.getDate() + 1
+//     );
+//     const startOfDayAfterTomorrow = new Date(
+//         nowDate.getFullYear(),
+//         nowDate.getMonth(),
+//         nowDate.getDate() + 2
+//     );
+
+//     const timeText = d.toLocaleTimeString([], {
+//         hour: "2-digit",
+//         minute: "2-digit",
+//         hour12: false,
+//     });
+
+//     if (d >= startOfToday && d < startOfTomorrow) {
+//         return `Today • ${timeText}`;
+//     }
+
+//     if (d >= startOfTomorrow && d < startOfDayAfterTomorrow) {
+//         return `Tomorrow • ${timeText}`;
+//     }
+
+//     const dateText = d.toLocaleDateString([], {
+//         year: "numeric",
+//         month: "short",
+//         day: "numeric",
+//     });
+
+//     return `${dateText} • ${timeText}`;
+// }
 
 function statusCardClass(status) {
     if (status === "occupied") return "card-occupied";
@@ -285,7 +389,10 @@ function formatCountdown(seconds) {
     if (hrs >= 24) {
         const days = Math.floor(hrs / 24);
         const remainHours = hrs % 24;
-        return `${String(days).padStart(2, "0")}d ${String(remainHours).padStart(2, "0")}h ${String(mins).padStart(2, "0")}m`;
+        return `${String(days).padStart(2, "0")}d ${String(remainHours).padStart(
+            2,
+            "0"
+        )}h ${String(mins).padStart(2, "0")}m`;
     }
 
     return [
@@ -329,16 +436,57 @@ async function loadBoard() {
 
         updateLiveCountdown();
     } catch (e) {
-        error.value = e?.response?.data?.message || e?.message || "Failed to load room status board";
+        error.value =
+            e?.response?.data?.message || e?.message || "Failed to load room status board";
     } finally {
         loading.value = false;
     }
 }
 
+function updateFullscreenState() {
+    isFullscreen.value = Boolean(document.fullscreenElement);
+}
+
+async function toggleFullscreen() {
+    try {
+        if (!document.fullscreenElement) {
+            await tvWrapper.value?.requestFullscreen();
+        } else {
+            await document.exitFullscreen();
+        }
+    } catch (e) {
+        console.error("Fullscreen error:", e);
+    }
+}
+
+function openOnSecondScreen() {
+    const url = new URL(window.location.href);
+
+    url.searchParams.set("display", "1");
+
+    const displayWindow = window.open(
+        url.toString(),
+        "meeting-room-tv-display",
+        "popup=yes,width=1920,height=1080,resizable=yes,scrollbars=no"
+    );
+
+    if (!displayWindow) {
+        window.alert(
+            "Popup was blocked. Please allow popups, then click Open Display again."
+        );
+        return;
+    }
+
+    displayWindow.focus();
+}
+
 onMounted(async () => {
     await loadBoard();
 
+    document.addEventListener("fullscreenchange", updateFullscreenState);
+
     refreshTimer = setInterval(loadBoard, 30000);
+
     clockTimer = setInterval(() => {
         now.value = new Date();
         updateLiveCountdown();
@@ -348,18 +496,84 @@ onMounted(async () => {
 onBeforeUnmount(() => {
     if (refreshTimer) clearInterval(refreshTimer);
     if (clockTimer) clearInterval(clockTimer);
+
+    document.removeEventListener("fullscreenchange", updateFullscreenState);
 });
 </script>
 
 <style scoped>
+.tv-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* Fullscreen mode for TV / external monitor */
+.tv-wrapper:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    background: #020617;
+    overflow: auto;
+}
+
+.tv-wrapper:fullscreen .tv-dashboard {
+    min-height: 100vh;
+    padding: 28px;
+}
+
+/* Dedicated second-screen display mode */
+.display-mode .tv-dashboard {
+    min-height: 100vh;
+}
+
+.display-mode .tv-header {
+    margin-bottom: 28px;
+}
+
+@media (min-width: 1600px) {
+    .display-mode .tv-dashboard {
+        padding: 32px;
+    }
+
+    .display-mode .tv-grid {
+        gap: 26px;
+    }
+
+    .display-mode .room-card {
+        min-height: 350px;
+        padding: 28px;
+    }
+
+    .display-mode .room-title-wrap h3 {
+        font-size: 32px;
+    }
+
+    .display-mode .main-title {
+        font-size: 32px;
+    }
+
+    .display-mode .countdown-text {
+        font-size: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tv-actions {
+        justify-content: flex-start;
+    }
+}
+
 .tv-wrapper {
     background: #020617;
 }
 
 .tv-dashboard {
     min-height: 100vh;
-    background:
-        radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 30%),
+    background: radial-gradient(circle at top left,
+            rgba(59, 130, 246, 0.18),
+            transparent 30%),
         radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 28%),
         linear-gradient(135deg, #0f172a, #111827 45%, #1e293b);
     color: #fff;
@@ -454,6 +668,10 @@ onBeforeUnmount(() => {
 
 .card-upcoming {
     background: linear-gradient(135deg, #92400e, #d97706 60%, #f59e0b);
+}
+
+.card-in_meeting {
+    background: linear-gradient(135deg, #991b1b, #dc2626 60%, #ef4444);
 }
 
 .room-top {
@@ -561,7 +779,7 @@ onBeforeUnmount(() => {
     gap: 12px;
     padding: 10px 12px;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .info-icon {
@@ -608,7 +826,7 @@ onBeforeUnmount(() => {
 }
 
 .countdown-box.danger {
-    background: rgba(127, 29, 29, 0.30);
+    background: rgba(127, 29, 29, 0.3);
 }
 
 .countdown-box.warning {

@@ -29,6 +29,9 @@
                                     <select class="form-control form-control-sm" v-model="filters.status">
                                         <option value="">All</option>
                                         <option value="pending">pending</option>
+
+                                        <option value="in_meeting">in_meeting</option>
+
                                         <option value="approved">approved</option>
                                         <option value="rejected">rejected</option>
                                         <option value="cancel_requested">cancel_requested</option>
@@ -360,6 +363,11 @@
                             <i class="fa fa-pen mr-1"></i> Edit
                         </button>
 
+                        <button v-if="selectedBooking && canAddExtraTime(selectedBooking)" type="button"
+                            class="btn btn-info" :disabled="actionLoading" @click="addExtraTime(selectedBooking)">
+                            <i class="fa fa-clock-o mr-1"></i> Add Extra Time
+                        </button>
+
                         <button v-if="selectedBooking && canRequestCancel(selectedBooking)" type="button"
                             class="btn btn-warning" :disabled="actionLoading"
                             @click="requestCancelBooking(selectedBooking.id)">
@@ -431,6 +439,7 @@ import {
     apiConfirmCancelBooking,
     apiAdminCancelBooking,
     apiDeleteBooking,
+    apiAddExtraTime,
     apiGetAvailableRooms,
 } from "@func/api/booking";
 import { apiGetRooms } from "@func/api/room";
@@ -604,7 +613,7 @@ function parseLocalInput(value) {
 }
 
 function fmt(value) {
-    return formatSystemDateTime(value);
+    return formatBookingDateTime(value);
 }
 
 function fmtDateOnly(value) {
@@ -620,7 +629,7 @@ function toMysqlDatetimeWrapper(value) {
 }
 
 function formatScheduleDate(value) {
-    return formatBookingDate(value);
+    return formatBookingDateTime(value);
 }
 
 function formatScheduleTime(value) {
@@ -650,6 +659,8 @@ function statusBadge(status) {
             return "badge-warning";
         case "approved":
             return "badge-success";
+        case "in_meeting":
+            return "badge-danger";
         case "rejected":
             return "badge-danger";
         case "cancel_requested":
@@ -872,6 +883,99 @@ function canAdminDirectCancel(booking) {
     if (!booking || !isAdmin.value) return false;
     if (isPastBooking(booking)) return false;
     return booking.status === "approved";
+}
+
+function isBookingOwner(booking) {
+    const currentUserId = currentUser.value?.id;
+
+    return currentUserId && Number(booking.user_id) === Number(currentUserId);
+}
+
+function canAddExtraTime(booking) {
+    if (!booking) return false;
+
+    // Only allow adding time while the meeting is active.
+    if (booking.status !== "in_meeting") return false;
+
+    // Admin / Super Admin can extend any active meeting.
+    // Normal user can extend only their own meeting.
+    return isAdmin.value || isBookingOwner(booking);
+}
+
+async function addExtraTime(booking) {
+    const result = await Swal.fire({
+        icon: "question",
+        title: "Add Extra Time",
+        text: `Current end time: ${fmt(booking.end_datetime)}`,
+        input: "number",
+        inputLabel: "Extra hours",
+        inputValue: 1,
+        inputAttributes: {
+            min: 1,
+            max: 4,
+            step: 1,
+            inputmode: "numeric",
+        },
+        showCancelButton: true,
+        confirmButtonColor: "#17a2b8",
+        confirmButtonText: "Add Time",
+        cancelButtonText: "Close",
+        inputValidator: (value) => {
+            const hours = Number(value);
+
+            if (!Number.isInteger(hours) || hours < 1) {
+                return "Please enter at least 1 hour.";
+            }
+
+            if (hours > 4) {
+                return "Extra time cannot exceed 4 hours.";
+            }
+
+            return null;
+        },
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        actionLoading.value = true;
+        LoadingModal();
+
+        const response = await apiAddExtraTime(booking.id, {
+            // Must match Laravel validation exactly.
+            extra_hours: Number(result.value),
+        });
+
+        const updatedBooking = response.data?.data ?? response.data;
+
+        onBookingUpdate(updatedBooking);
+        selectedBooking.value = updatedBooking;
+
+        CloseModal();
+
+        MessageModal(
+            "success",
+            "Extra Time Added",
+            response.data?.message || `${result.value} hour(s) added successfully.`
+        );
+    } catch (e) {
+        CloseModal();
+
+        console.error("========== ADD EXTRA TIME ERROR ==========");
+        console.error("Status:", e?.response?.status);
+        console.error("Response:", e?.response?.data);
+
+        const backendMessage =
+            e?.response?.data?.errors?.extra_hours?.[0] ||
+            e?.response?.data?.errors?.booking?.[0] ||
+            e?.response?.data?.message ||
+            e?.message ||
+            "Failed to extend this meeting.";
+
+        MessageModal("error", "Unable to Add Extra Time", backendMessage);
+    } finally {
+        actionLoading.value = false;
+    }
 }
 
 function canDelete(booking) {
@@ -1120,88 +1224,88 @@ async function loadAvailableRooms(silent = false, preferredRoomId = null) {
     }
 }
 
-async function saveExtraTime() {
-    formError.value = "";
+// async function saveExtraTime() {
+//     formError.value = "";
 
-    if (!bookingForm.id) {
-        formError.value = "Please select a booking to extend.";
-        return;
-    }
+//     if (!bookingForm.id) {
+//         formError.value = "Please select a booking to extend.";
+//         return;
+//     }
 
-    if (!bookingForm.start_datetime || !bookingForm.end_datetime) {
-        formError.value = "Please select start and end datetime.";
-        return;
-    }
+//     if (!bookingForm.start_datetime || !bookingForm.end_datetime) {
+//         formError.value = "Please select start and end datetime.";
+//         return;
+//     }
 
-    const start = new Date(normalizeDt(bookingForm.start_datetime));
-    const end = new Date(normalizeDt(bookingForm.end_datetime));
+//     const start = new Date(normalizeDt(bookingForm.start_datetime));
+//     const end = new Date(normalizeDt(bookingForm.end_datetime));
 
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        formError.value = "Invalid datetime format.";
-        return;
-    }
+//     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+//         formError.value = "Invalid datetime format.";
+//         return;
+//     }
 
-    if (start < new Date()) {
-        formError.value = "Cannot select past time.";
-        return;
-    }
+//     if (start < new Date()) {
+//         formError.value = "Cannot select past time.";
+//         return;
+//     }
 
-    if (end <= start) {
-        formError.value = "End datetime must be after start datetime.";
-        return;
-    }
+//     if (end <= start) {
+//         formError.value = "End datetime must be after start datetime.";
+//         return;
+//     }
 
-    // Check room availability first
-    checkingAvailability.value = true;
-    try {
-        const res = await apiGetAvailableRooms({
-            start_datetime: toMysqlDatetime(bookingForm.start_datetime),
-            end_datetime: toMysqlDatetime(bookingForm.end_datetime),
-            ignore_id: bookingForm.id,
-        });
+//     // Check room availability first
+//     checkingAvailability.value = true;
+//     try {
+//         const res = await apiGetAvailableRooms({
+//             start_datetime: toMysqlDatetime(bookingForm.start_datetime),
+//             end_datetime: toMysqlDatetime(bookingForm.end_datetime),
+//             ignore_id: bookingForm.id,
+//         });
 
-        if (!res.data?.data?.length) {
-            formError.value = "No available room at this time.";
-            return;
-        }
-    } catch (e) {
-        formError.value = "Failed to check room availability.";
-        return;
-    } finally {
-        checkingAvailability.value = false;
-    }
+//         if (!res.data?.data?.length) {
+//             formError.value = "No available room at this time.";
+//             return;
+//         }
+//     } catch (e) {
+//         formError.value = "Failed to check room availability.";
+//         return;
+//     } finally {
+//         checkingAvailability.value = false;
+//     }
 
-    saving.value = true;
+//     saving.value = true;
 
-    try {
-        LoadingModal();
+//     try {
+//         LoadingModal();
 
-        const payload = {
-            end_datetime: toMysqlDatetime(bookingForm.end_datetime), // optional, backend +1h if not set
-        };
+//         const payload = {
+//             end_datetime: toMysqlDatetime(bookingForm.end_datetime), // optional, backend +1h if not set
+//         };
 
-        const response = await apiAddExtraTime(bookingForm.id, payload);
+//         const response = await apiAddExtraTime(bookingForm.id, payload);
 
-        hideCreateModal();
-        CloseModal();
-        refetch();
+//         hideCreateModal();
+//         CloseModal();
+//         refetch();
 
-        MessageModal(
-            "success",
-            "Success",
-            response?.data?.message || "Booking time extended. Admins have been notified."
-        );
-    } catch (e) {
-        CloseModal();
-        MessageModal(
-            "error",
-            "Error",
-            e?.response?.data?.message || e?.message || "Failed to extend booking."
-        );
-    } finally {
-        saving.value = false;
-    }
-}
+//         MessageModal(
+//             "success",
+//             "Success",
+//             response?.data?.message || "Booking time extended. Admins have been notified."
+//         );
+//     } catch (e) {
+//         CloseModal();
+//         MessageModal(
+//             "error",
+//             "Error",
+//             e?.response?.data?.message || e?.message || "Failed to extend booking."
+//         );
+//     } finally {
+//         saving.value = false;
+//     }
+// }
 
 async function saveBooking() {
     if (!validateBookingForm()) return;
@@ -1515,7 +1619,7 @@ onMounted(async () => {
 const columns = [
     { header: "No", cell: ({ row }) => row.index + 1, meta: { width: "50px" } },
     {
-        header: "Room Selection",
+        header: "Rooms",
         accessorFn: (row) => {
             const room = row.room?.name ?? `Room #${row.room_id}`;
             const floor = row.room?.floor ? `Floor ${row.room.floor}` : "";
@@ -1523,23 +1627,14 @@ const columns = [
             return `${room}\n${floor} ${capacity}`;
         },
     },
-    {
-        header: "User",
-        accessorFn: (row) => {
-            const name = row.user?.name ?? "-";
-            const dept = row.user?.department ? `\n${row.user.department}` : "";
-            return `${name}${dept}`;
-        },
-    },
+
     {
         header: "Schedule",
         cell: ({ row }) => {
             const start = row.original.start_datetime;
             const end = row.original.end_datetime;
 
-            return `${formatScheduleDate(start)}\n${formatScheduleTime(
-                start
-            )} - ${formatScheduleTime(end)}`;
+            return `Start: ${formatScheduleDate(start)}\n - End: ${formatScheduleDate(end)}`;
         },
         meta: { align: "center" },
     },
@@ -1554,6 +1649,14 @@ const columns = [
         accessorKey: "updated_at",
         cell: ({ getValue }) => fmt(getValue()),
         meta: { align: "center" },
+    },
+    {
+        header: "User",
+        accessorFn: (row) => {
+            const name = row.user?.name ?? "-";
+            const dept = row.user?.department ? `\n${row.user.department}` : "";
+            return `${name}${dept}`;
+        },
     },
     {
         header: "Status",

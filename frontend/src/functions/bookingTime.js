@@ -18,6 +18,7 @@ export const BOOKING_TIME_ZONE = "Asia/Phnom_Penh";
 |--------------------------------------------------------------------------
 */
 
+
 export function parseBookingLocalDatetime(value) {
     if (!value) return null;
 
@@ -31,10 +32,20 @@ export function parseBookingLocalDatetime(value) {
         text += ":00";
     }
 
-    const date = new Date(`${text.slice(0, 19)}+07:00`);
+    const hasTimezone =
+        /Z$/i.test(text) ||
+        /[+-]\d{2}:?\d{2}$/.test(text);
+
+    // API datetime without timezone is treated as UTC.
+    if (!hasTimezone) {
+        text = `${text.slice(0, 19)}Z`;
+    }
+
+    const date = new Date(text);
 
     return Number.isNaN(date.getTime()) ? null : date;
 }
+
 
 /*
 |--------------------------------------------------------------------------
@@ -123,14 +134,14 @@ export function formatBookingTime(value) {
 }
 
 
-// For example: Jun 9, 2026, 10:00 AM
+
 export function formatBookingDateTime(value) {
     const date = parseBookingLocalDatetime(value);
 
     if (!date) return "-";
 
     return new Intl.DateTimeFormat("en-US", {
-        timeZone: BOOKING_TIME_ZONE,
+        timeZone: "Asia/Phnom_Penh",
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -138,8 +149,9 @@ export function formatBookingDateTime(value) {
         minute: "2-digit",
         hour12: true,
     }).format(date);
-
 }
+
+
 
 export function formatSystemDateTime(value) {
     const date = parseSystemTimestamp(value);
